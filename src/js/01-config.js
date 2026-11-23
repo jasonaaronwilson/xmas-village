@@ -1,6 +1,8 @@
   // =========================================================================
   // 1. CONSTANTS & MAP CONFIGURATION (60x60 spacious design area)
   // =========================================================================
+  const APP_VERSION = 1;
+  window.APP_VERSION = APP_VERSION;
   const GRID_SIZE = 60;
   const TILE_W = 80;
   const TILE_H = 40;

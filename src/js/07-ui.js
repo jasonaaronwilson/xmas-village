@@ -294,6 +294,7 @@
   function serializeVillage() {
     return {
       version: 3,
+      appVersion: APP_VERSION,
       gridSize: GRID_SIZE,
       terrain: state.terrain,
       corners: state.corners,
@@ -634,6 +635,7 @@
 
   if (!loaded) { buildSampleVillage(); autoSave(); }
 
+  document.querySelectorAll('.app-ver').forEach(el => { el.textContent = `v${APP_VERSION}`; });
   centerCamera();
   renderPalette();
   renderConfigPanel();
