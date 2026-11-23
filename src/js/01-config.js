@@ -87,7 +87,7 @@
     terrain: [],
     corners: [],
     objects: [],
-    selectedTool: 'place',
+    selectedTool: 'inspect',
     selectedCat: 'buildings',
     selectedItem: 'cottage',
     config: {

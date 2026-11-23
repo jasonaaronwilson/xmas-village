@@ -24,7 +24,6 @@
   function setTool(tool) {
     state.selectedTool = tool;
     if (tool !== 'inspect') state.inspectedObjId = null;
-    document.getElementById('tool-place').classList.toggle('active', tool === 'place');
     document.getElementById('tool-inspect').classList.toggle('active', tool === 'inspect');
     document.getElementById('tool-erase').classList.toggle('active', tool === 'erase');
     renderConfigPanel();
@@ -464,7 +463,6 @@
     };
   });
 
-  document.getElementById('tool-place').onclick = () => setTool('place');
   document.getElementById('tool-inspect').onclick = () => setTool('inspect');
   document.getElementById('tool-erase').onclick = () => setTool('erase');
   document.getElementById('btn-rotate').onclick = toggleFlip;
