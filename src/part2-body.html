@@ -1,0 +1,217 @@
+</style>
+</head>
+<body>
+
+<canvas id="game-canvas"></canvas>
+
+<!-- Single Left-Edge Toolbar -->
+<div id="left-dock" class="ui-panel">
+  <button class="dock-btn" id="btn-dock-build" title="Build Palette (B)">🏠</button>
+  <button class="dock-btn" id="btn-dock-options" title="Customize Options & Atmosphere (O)">🎨</button>
+  <div class="dock-sep"></div>
+  <button class="dock-btn active" id="tool-place" title="Place / Paint (1)">🖌️</button>
+  <button class="dock-btn" id="tool-inspect" title="Inspect & Edit Existing Item (2)">🔍</button>
+  <button class="dock-btn" id="tool-erase" title="Erase / Bulldoze (3 or Right-Click)">🧹</button>
+  <button class="dock-btn" id="btn-rotate" title="Rotate Facing (R)">🔄</button>
+  <div class="dock-sep"></div>
+  <button class="dock-btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>↩️</button>
+  <button class="dock-btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>↪️</button>
+  <div class="dock-sep"></div>
+  <button class="dock-btn" id="btn-zoom-in" title="Zoom In (+)">➕</button>
+  <button class="dock-btn" id="btn-zoom-out" title="Zoom Out (-)">➖</button>
+  <div class="dock-spacer"></div>
+  <button class="dock-btn" id="btn-audio" title="Toggle Cozy Ambiance">🔇</button>
+  <button class="dock-btn" id="btn-saves" title="Saved Villages & Presets">💾</button>
+  <button class="dock-btn" id="btn-share" title="Share JSON & Customized Greeting">🎁</button>
+  <button class="dock-btn btn-snow-dock" id="btn-snow-mode" title="Hide Editor & Begin Snowfall">❄️</button>
+</div>
+
+<!-- Floating Dialog: Build Palette -->
+<div id="dialog-build" class="dock-dialog ui-panel">
+  <div class="dialog-header">
+    <h3>🏠 Build & Place</h3>
+    <button class="btn" id="close-build" style="padding:2px 7px;">✕</button>
+  </div>
+  <div class="cat-tabs" id="cat-tabs">
+    <div class="cat-tab active" data-cat="terrain">Terrain</div>
+    <div class="cat-tab" data-cat="buildings">Buildings</div>
+    <div class="cat-tab" data-cat="decor">Decor</div>
+    <div class="cat-tab" data-cat="living">Living</div>
+  </div>
+  <div class="item-grid" id="item-grid"></div>
+</div>
+
+<!-- Floating Dialog: Item Options & Atmosphere -->
+<div id="dialog-options" class="dock-dialog ui-panel">
+  <div class="dialog-header">
+    <h3 id="config-item-title">🎨 Customize</h3>
+    <button class="btn" id="close-options" style="padding:2px 7px;">✕</button>
+  </div>
+  <div class="dialog-body">
+    <div id="config-item-desc" style="font-size:11px;color:var(--text-muted);">
+      Select a tile or building to customize.
+    </div>
+    <div id="config-options-container"></div>
+    <div>
+      <div class="section-title">Map & Snow</div>
+      <div class="option-row">
+        <label>Snowfall Level</label>
+        <div class="chip-group">
+          <button class="chip snow-lvl-btn active" data-lvl="1">1. Flurries</button>
+          <button class="chip snow-lvl-btn" data-lvl="2">2. Steady</button>
+          <button class="chip snow-lvl-btn" data-lvl="3">3. Blizzard</button>
+        </div>
+      </div>
+      <div class="option-row">
+        <label><span>Snow Accumulation</span><span id="accum-label">0%</span></label>
+        <div style="display:flex;gap:6px;">
+          <button class="btn" id="btn-clear-snow" style="flex:1;justify-content:center;">Sweep Snow</button>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:4px;">
+        Pan: Middle-drag or Space+Drag • Zoom: Scroll • Erase: Right-click
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Dialog: Snowfall Rate Picker -->
+<div id="dialog-snow" class="dock-dialog ui-panel" style="top:auto;bottom:12px;width:236px;">
+  <div class="dialog-header">
+    <h3>❄️ Choose Snowfall Rate</h3>
+    <button class="btn" id="close-snow-dialog" style="padding:2px 7px;">✕</button>
+  </div>
+  <div class="dialog-body" style="gap:7px;">
+    <button class="btn snow-start-btn" data-lvl="1" style="justify-content:space-between;padding:8px 10px;">
+      <span>🌨️ 1. Gentle Flurries</span><small style="color:var(--text-muted)">Light breeze</small>
+    </button>
+    <button class="btn snow-start-btn" data-lvl="2" style="justify-content:space-between;padding:8px 10px;">
+      <span>❄️ 2. Steady Snowfall</span><small style="color:var(--text-muted)">Brisk wind</small>
+    </button>
+    <button class="btn btn-snow snow-start-btn" data-lvl="3" style="justify-content:space-between;padding:8px 10px;">
+      <span>🌬️ 3. Winter Blizzard</span><small style="color:#e0f2fe">Howling gusts</small>
+    </button>
+  </div>
+</div>
+
+<!-- Snow Mode Single Lower-Left Button -->
+<button id="btn-exit-snow" class="ui-panel btn" title="Return to Editor (Esc)">✏️ Editor</button>
+
+<!-- Greeting Banner -->
+<div id="greeting-banner" class="ui-panel">
+  <h2 id="banner-title">Season's Greetings!</h2>
+  <p id="banner-msg"></p>
+  <div class="sig" id="banner-sig"></div>
+  <div style="margin-top:10px;display:flex;justify-content:center;gap:8px;">
+    <button class="btn btn-snow" id="btn-close-banner">Admire Village</button>
+  </div>
+</div>
+
+<!-- Welcome / Initial Terrain Modal (comes up first) -->
+<div id="modal-welcome" class="modal-backdrop open">
+  <div class="modal ui-panel" style="width:500px;">
+    <div class="modal-header">
+      <h3>🏔️ Choose Your Village Terrain</h3>
+      <button class="btn" onclick="closeModal('modal-welcome')" title="Keep Current">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">
+      Pick a starting landscape for your Christmas village. You can also sculpt hills anytime under <strong>Build → Terrain</strong>.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button class="item-card" data-start-preset="victorian" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:var(--accent-gold);font-size:13px;">🎩 Victorian Flat</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Level winter plain with a subtle back rim — ideal for neat streets &amp; town squares.</span>
+      </button>
+      <button class="item-card" data-start-preset="swiss" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:var(--accent-ice);font-size:13px;">🏔️ Swiss Alpine</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Dramatic snow-capped peaks in the back sloping down to a cozy valley &amp; small hills.</span>
+      </button>
+      <button class="item-card" data-start-preset="foothills" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:#4ade80;font-size:13px;">🌲 Rolling Foothills</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Gentle sloped hills across the village with a rising winter ridge behind.</span>
+      </button>
+      <button class="item-card" data-start-preset="lake" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:#38bdf8;font-size:13px;">⛸️ Lakeside &amp; Peaks</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Frozen lake in the front with sloped snowy banks and alpine peaks in the back.</span>
+      </button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">
+      <button class="btn" id="btn-welcome-sample">✨ Open Sample Village</button>
+      <button class="btn btn-gold" onclick="closeModal('modal-welcome')">Continue Current Map</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save / Load Modal -->
+<div id="modal-saves" class="modal-backdrop">
+  <div class="modal ui-panel">
+    <div class="modal-header">
+      <h3>💾 Saved Villages & Presets</h3>
+      <button class="btn" onclick="closeModal('modal-saves')">✕</button>
+    </div>
+    <div class="option-row">
+      <label>Save Current Village to Browser</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="save-name-input" placeholder="e.g. Pinewood Hollow" />
+        <button class="btn btn-gold" id="btn-save-slot">Save</button>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Your Browser Saves</div>
+      <div class="slot-list" id="save-slots-list"></div>
+    </div>
+    <div>
+      <div class="section-title">New Map — Initial Terrain & Elevation</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <select id="new-terrain-preset" style="flex:1.4;background:#0f172a;color:var(--text-main);border:1px solid var(--panel-border);border-radius:5px;padding:6px 8px;font-size:12px;">
+          <option value="victorian">🎩 Victorian Flat</option>
+          <option value="swiss" selected>🏔️ Swiss Alpine (Back Peaks)</option>
+          <option value="foothills">🌲 Rolling Foothills</option>
+          <option value="lake">⛸️ Lakeside &amp; Peaks</option>
+        </select>
+        <select id="new-terrain-elev" style="flex:1;background:#0f172a;color:var(--text-main);border:1px solid var(--panel-border);border-radius:5px;padding:6px 8px;font-size:12px;">
+          <option value="0">Flat (0)</option>
+          <option value="1" selected>Gentle</option>
+          <option value="2">Dramatic</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-snow" id="btn-generate-terrain" style="flex:1;justify-content:center;">🌄 Generate New Map</button>
+        <button class="btn" id="btn-load-sample">✨ Sample Village</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share & Greeting Modal -->
+<div id="modal-share" class="modal-backdrop">
+  <div class="modal ui-panel">
+    <div class="modal-header">
+      <h3>🎁 Share Village & Greeting</h3>
+      <button class="btn" onclick="closeModal('modal-share')">✕</button>
+    </div>
+    <div class="option-row">
+      <label>Greeting Title</label>
+      <input type="text" id="greet-title" placeholder="Merry Christmas & Happy Holidays!" />
+    </div>
+    <div class="option-row">
+      <label>Message for Friends & Family</label>
+      <textarea id="greet-msg" rows="3" placeholder="Wishing you warmth, joy, and cozy winter nights..."></textarea>
+    </div>
+    <div class="option-row">
+      <label>From / Signature</label>
+      <input type="text" id="greet-sig" placeholder="— The Wilson Family" />
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-gold" id="btn-export-json" style="flex:1;justify-content:center;">⬇️ Export Village (.json)</button>
+      <button class="btn btn-snow" id="btn-import-json-trigger" style="flex:1;justify-content:center;">⬆️ Import Village (.json)</button>
+      <input type="file" id="import-json-file" accept=".json,application/json" style="display:none" />
+    </div>
+    <button class="btn" id="btn-preview-greeting" style="justify-content:center;">💌 Preview Greeting in Snow Mode</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
