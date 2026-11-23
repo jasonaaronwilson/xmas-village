@@ -802,7 +802,7 @@
           h = basinDist < 0.56 ? (basinDist / 0.56) * WATER_LEVEL * 0.92 : landH + (basinDist - 0.56) * 1.2;
         }
 
-        state.corners[cy][cx] = Math.max(0, Math.min(12, Math.round(h * 2) / 2));
+        state.corners[cy][cx] = Math.max(0, Math.round(h * 2) / 2);
       }
     }
 
@@ -2659,10 +2659,35 @@
     if (!item) return;
     if (item.type === 'elev') {
       pushUndo();
+      const step = item.delta * 0.75;
+      const MAX_SLOPE = 1.0;
+      const queue = [];
       for (let dy = 0; dy <= 1; dy++) {
         for (let dx = 0; dx <= 1; dx++) {
-          const cur = state.corners[gy + dy][gx + dx] || 0;
-          state.corners[gy + dy][gx + dx] = Math.max(0, Math.min(12, cur + item.delta * 0.75));
+          const cx = gx + dx, cy = gy + dy;
+          const cur = state.corners[cy][cx] || 0;
+          const next = Math.max(0, cur + step);
+          if (next !== cur) {
+            state.corners[cy][cx] = next;
+            queue.push([cx, cy]);
+          }
+        }
+      }
+      // Expand lift/lower radius outward when slope exceeds MAX_SLOPE (no max height cap)
+      while (queue.length) {
+        const [cx, cy] = queue.shift();
+        const ch = state.corners[cy][cx];
+        for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const nx = cx + ox, ny = cy + oy;
+          if (nx < 0 || ny < 0 || nx > GRID_SIZE || ny > GRID_SIZE) continue;
+          const nh = state.corners[ny][nx] || 0;
+          if (item.delta > 0 && ch - nh > MAX_SLOPE) {
+            state.corners[ny][nx] = ch - MAX_SLOPE;
+            queue.push([nx, ny]);
+          } else if (item.delta < 0 && nh - ch > MAX_SLOPE) {
+            state.corners[ny][nx] = Math.max(0, ch + MAX_SLOPE);
+            queue.push([nx, ny]);
+          }
         }
       }
       audio.playClick(item.delta > 0 ? 520 : 340);

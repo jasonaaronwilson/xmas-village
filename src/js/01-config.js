@@ -187,7 +187,7 @@
           h = basinDist < 0.56 ? (basinDist / 0.56) * WATER_LEVEL * 0.92 : landH + (basinDist - 0.56) * 1.2;
         }
 
-        state.corners[cy][cx] = Math.max(0, Math.min(12, Math.round(h * 2) / 2));
+        state.corners[cy][cx] = Math.max(0, Math.round(h * 2) / 2);
       }
     }
 
