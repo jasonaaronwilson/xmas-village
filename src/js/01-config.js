@@ -56,7 +56,12 @@
     { id: 'workshop',   cat: 'buildings', name: 'Toy Workshop',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Whimsical workshop with hanging sign & eaves.' },
     { id: 'cabin',      cat: 'buildings', name: 'Log Cabin',        type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Rustic timber cabin with stone chimney.' },
     { id: 'chapel',     cat: 'buildings', name: 'Steeple Chapel',   type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: false, hasFlip: true, desc: 'Quaint chapel with stained glass & bell spire.' },
+    { id: 'butcher',    cat: 'buildings', name: 'Butcher Shop',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Cozy butcher shop with striped awning & display.' },
+    { id: 'postoffice', cat: 'buildings', name: 'Post Office',      type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Holiday post office with red mailbox out front.' },
     { id: 'townhall',   cat: 'buildings', name: 'Grand Town Hall',  type: 'object', size: 2, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: false, desc: '2x2 centerpiece hall with illuminated clock tower.' },
+    { id: 'school',     cat: 'buildings', name: 'Village School',   type: 'object', size: 2, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: '2x2 storybook schoolhouse with bell cupola.' },
+    { id: 'hospital',   cat: 'buildings', name: 'Cottage Hospital', type: 'object', size: 2, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: '2x2 village clinic with red cross & warm wards.' },
+    { id: 'inn',        cat: 'buildings', name: 'Village Inn',      type: 'object', size: 2, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: '2x2 two-story tavern & inn with twin chimneys.' },
 
     { id: 'pine',       cat: 'decor',     name: 'Pine Tree',        type: 'object', size: 1, hasLights: true, desc: 'Lush snow-laden evergreen.' },
     { id: 'grandtree',  cat: 'decor',     name: 'Village Tree',     type: 'object', size: 1, hasLights: true, desc: 'Grand decorated tree with glowing star.' },

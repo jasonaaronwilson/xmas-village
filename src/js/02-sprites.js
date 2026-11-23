@@ -585,6 +585,110 @@
       ctx.closePath(); ctx.fill();
       ctx.strokeStyle = '#1e293b'; ctx.stroke();
     }
+    else if (obj.type === 'butcher') {
+      drawVectorBox(ctx, cx, by, 25, 12.5, 23, pal.wall, pal.wallShade, null);
+      // Red & white butcher awning
+      for (let i = 0; i < 7; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#b91c1c' : '#f8fafc';
+        ctx.beginPath();
+        ctx.roundRect(cx - 21 + i * 3, by - 18 + i * 1.4, 3.2, 5, [0, 0, 1.5, 1.5]);
+        ctx.fill();
+      }
+      // Warm display window + hanging sign
+      drawVectorWindow(ctx, cx + 5, by - 17, 11, 8, true);
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath(); ctx.roundRect(cx - 17, by - 25, 9, 5, 1); ctx.fill();
+      ctx.fillStyle = '#fca5a5';
+      ctx.beginPath(); ctx.arc(cx - 12.5, by - 22.5, 1.5, 0, Math.PI * 2); ctx.fill();
+      drawVectorRoof(ctx, cx, by, 25, 12.5, 23, 16, pal.roof, pal.roofShade, snowThick);
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath(); ctx.roundRect(cx + 8, by - 52, 6, 14, 1); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx + 11, by - 52, 4.5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'postoffice') {
+      drawVectorBox(ctx, cx, by, 24, 12, 22, pal.wall, pal.wallShade, null);
+      ctx.fillStyle = '#166534';
+      ctx.beginPath(); ctx.roundRect(cx - 13, by - 17, 7, 12, [3, 3, 0, 0]); ctx.fill();
+      drawVectorWreath(ctx, cx - 9.5, by - 13);
+      drawVectorWindow(ctx, cx + 6, by - 18, 9, 7, lit, '#b91c1c');
+      // Red postbox out front
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.roundRect(cx - 20, by - 14, 4.5, 7, [2, 2, 0.5, 0.5]); ctx.fill();
+      ctx.fillStyle = '#fbbf24'; ctx.fillRect(cx - 19, by - 12, 2.5, 1);
+      drawVectorRoof(ctx, cx, by, 24, 12, 22, 16, pal.roof, pal.roofShade, snowThick);
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath(); ctx.roundRect(cx - 11, by - 50, 6, 13, 1); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx - 8, by - 50, 4.5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'school') {
+      drawVectorBox(ctx, cx, by, 52, 26, 32, '#b45348', '#8f3d34', null);
+      // Double arched school doors + wreath
+      ctx.fillStyle = '#5c3a21';
+      ctx.beginPath(); ctx.roundRect(cx - 16, by - 20, 11, 15, [4, 4, 0, 0]); ctx.fill();
+      drawVectorWreath(ctx, cx - 10.5, by - 14);
+      // Tall classroom windows
+      for (let i = -39; i <= 33; i += 13) {
+        if (Math.abs(i + 10) > 7) drawVectorWindow(ctx, cx + i, by - 27, 7, 10, lit, '#f8fafc');
+      }
+      drawVectorRoof(ctx, cx, by, 52, 26, 32, 24, pal.roof, pal.roofShade, snowThick);
+      // Bell Cupola
+      drawVectorBox(ctx, cx, by - 54, 10, 5, 16, '#f8fafc', '#cbd5e1', null);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.arc(cx, by - 64, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = pal.roof;
+      ctx.beginPath();
+      ctx.moveTo(cx - 11, by - 73); ctx.lineTo(cx + 11, by - 73); ctx.lineTo(cx, by - 88);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#1e293b'; ctx.stroke();
+    }
+    else if (obj.type === 'hospital') {
+      drawVectorBox(ctx, cx, by, 52, 26, 36, '#f1f5f9', '#cbd5e1', null);
+      // Covered entrance
+      ctx.fillStyle = '#475569';
+      ctx.beginPath(); ctx.roundRect(cx - 16, by - 20, 12, 16, [3, 3, 0, 0]); ctx.fill();
+      // Red Cross emblem
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.roundRect(cx - 15, by - 34, 10, 10, 2); ctx.fill();
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx - 11.2, by - 32.5, 2.4, 7);
+      ctx.fillRect(cx - 13.5, by - 30.2, 7, 2.4);
+      // Two floors of ward windows
+      for (let i = -38; i <= 32; i += 14) {
+        if (Math.abs(i + 10) > 8) drawVectorWindow(ctx, cx + i, by - 22, 7, 7, lit);
+        drawVectorWindow(ctx, cx + i, by - 34, 7, 7, lit);
+      }
+      drawVectorRoof(ctx, cx, by, 52, 26, 36, 22, '#334155', '#1e293b', snowThick);
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath(); ctx.roundRect(cx + 20, by - 72, 7, 16, 1); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx + 23.5, by - 72, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'inn') {
+      drawVectorBox(ctx, cx, by, 52, 26, 36, pal.wall, pal.wallShade, null);
+      // Timber half-framing
+      ctx.strokeStyle = pal.trim; ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 50, by - 46); ctx.lineTo(cx, by - 20); ctx.lineTo(cx + 50, by - 46);
+      ctx.stroke();
+      // Tavern door & hanging lantern sign
+      ctx.fillStyle = '#5c3a21';
+      ctx.beginPath(); ctx.roundRect(cx - 14, by - 20, 10, 15, [4, 4, 0, 0]); ctx.fill();
+      drawVectorWreath(ctx, cx - 9, by - 14);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.roundRect(cx + 2, by - 26, 11, 6, 1.5); ctx.fill();
+      for (let i = -38; i <= 32; i += 14) {
+        if (Math.abs(i + 9) > 7) drawVectorWindow(ctx, cx + i, by - 22, 7, 7, true, pal.shutter);
+        drawVectorWindow(ctx, cx + i, by - 34, 7, 7, lit, pal.shutter);
+      }
+      drawVectorRoof(ctx, cx, by, 52, 26, 36, 24, pal.roof, pal.roofShade, snowThick);
+      // Twin chimneys
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath(); ctx.roundRect(cx - 22, by - 74, 7, 16, 1); ctx.roundRect(cx + 16, by - 74, 7, 16, 1); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx - 18.5, by - 74, 5, 1.8, 0, 0, Math.PI * 2); ctx.ellipse(cx + 19.5, by - 74, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    }
     else if (obj.type === 'pine' || obj.type === 'grandtree') {
       const tall = obj.type === 'grandtree';
       ctx.fillStyle = '#5c3a21';

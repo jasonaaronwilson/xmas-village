@@ -512,7 +512,7 @@
       }
     } else if (obj.type === 'sleigh') {
       for (let dx = -12; dx <= 12; dx += 6) pts.push([dx, -18]);
-    } else if (obj.type === 'townhall') {
+    } else if (obj.size === 2) {
       for (let dx = -42; dx <= 42; dx += 8) pts.push([dx, -38 - (42 - Math.abs(dx)) * 0.35]);
     } else {
       for (let dx = -22; dx <= 22; dx += 7) pts.push([dx, -27 - (22 - Math.abs(dx)) * 0.35]);
