@@ -141,6 +141,11 @@
     if (e.key === '1') setTool('place');
     if (e.key === '2') setTool('inspect');
     if (e.key === '3') setTool('erase');
+    const panStep = e.shiftKey ? 120 : 48;
+    if (e.key === 'ArrowLeft')  { state.camera.x += panStep; e.preventDefault(); }
+    if (e.key === 'ArrowRight') { state.camera.x -= panStep; e.preventDefault(); }
+    if (e.key === 'ArrowUp')    { state.camera.y += panStep; e.preventDefault(); }
+    if (e.key === 'ArrowDown')  { state.camera.y -= panStep; e.preventDefault(); }
     if (!e.ctrlKey && !e.metaKey && (e.key === '+' || e.key === '=')) {
       const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
       setZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, (idx === -1 ? 5 : idx) + 1)]);
