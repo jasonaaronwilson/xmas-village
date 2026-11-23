@@ -615,6 +615,8 @@
   ];
 
   const CATALOG = [
+    { id: 'grass',      cat: 'terrain',   name: 'Lush Meadow',      type: 'terrain', desc: 'Green grass meadow before the snow falls.' },
+    { id: 'shrub',      cat: 'terrain',   name: 'Grassy Shrubs',    type: 'terrain', desc: 'Meadow with cozy wild bushes & tufts.' },
     { id: 'snow',       cat: 'terrain',   name: 'Snowy Meadow',     type: 'terrain', desc: 'Soft drifting winter snowfield.' },
     { id: 'road',       cat: 'terrain',   name: 'Cobble Street',    type: 'terrain', desc: 'Rounded cobblestone street with snow curbs.' },
     { id: 'path',       cat: 'terrain',   name: 'Footpath',         type: 'terrain', desc: 'Winding stone-dusted walkway.' },
@@ -684,7 +686,7 @@
 
   function initEmptyMap() {
     state.terrain = Array.from({ length: GRID_SIZE }, () =>
-      Array.from({ length: GRID_SIZE }, () => 'snow')
+      Array.from({ length: GRID_SIZE }, () => (Math.random() < 0.18 ? 'shrub' : 'grass'))
     );
     state.corners = Array.from({ length: GRID_SIZE + 1 }, () =>
       Array.from({ length: GRID_SIZE + 1 }, () => 0)
@@ -802,7 +804,60 @@
     const { c, ctx } = makeVectorCanvas(TILE_W, TILE_H);
     const cx = TILE_W / 2, cy = TILE_H / 2;
 
-    if (type === 'snow') {
+    if (type === 'grass' || type === 'shrub') {
+      const shades = [
+        ['#5c8f46', '#4a7a37'],
+        ['#53853f', '#426f30'],
+        ['#62964b', '#4e803a'],
+        ['#578a43', '#457433'],
+      ];
+      const [gTop, gBot] = shades[variant];
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, gTop);
+      grad.addColorStop(1, gBot);
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, grad, '#3f6a2e', 0.8);
+
+      // Subtle grass blade tufts
+      ctx.strokeStyle = 'rgba(134, 194, 98, 0.55)';
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 4; i++) {
+        const rx = cx + (hash2(i, variant, 3) - 0.5) * 34;
+        const ry = cy + (hash2(i, variant, 4) - 0.5) * 14;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.quadraticCurveTo(rx - 2, ry - 3, rx - 3, ry - 4);
+        ctx.moveTo(rx, ry);
+        ctx.quadraticCurveTo(rx + 2, ry - 3, rx + 3, ry - 3.5);
+        ctx.stroke();
+      }
+
+      if (type === 'shrub') {
+        const count = 2 + (variant % 2);
+        for (let b = 0; b < count; b++) {
+          const bx = cx + (hash2(b, variant, 7) - 0.5) * 26;
+          const by = cy + (hash2(b, variant, 8) - 0.5) * 10;
+          const r = 4.2 + hash2(b, variant, 9) * 2.4;
+          // Shadow
+          ctx.fillStyle = 'rgba(20, 45, 18, 0.35)';
+          ctx.beginPath(); ctx.ellipse(bx + 1, by + 1.5, r, r * 0.65, 0, 0, Math.PI * 2); ctx.fill();
+          // Bush clusters
+          ctx.fillStyle = '#2d5a27';
+          ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#3f7835';
+          ctx.beginPath(); ctx.arc(bx - r * 0.25, by - r * 0.2, r * 0.72, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#5a9c49';
+          ctx.beginPath(); ctx.arc(bx - r * 0.35, by - r * 0.35, r * 0.42, 0, Math.PI * 2); ctx.fill();
+          // Tiny autumn/holiday berries on some shrubs
+          if ((b + variant) % 2 === 0) {
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(bx + 1.5, by - 1, 0.9, 0, Math.PI * 2);
+            ctx.arc(bx - 1.5, by + 0.5, 0.9, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    } else if (type === 'snow') {
       const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
       grad.addColorStop(0, '#f3f8ff');
       grad.addColorStop(0.55, '#deecfb');
@@ -1824,6 +1879,34 @@
           } else if (tType === 'path') {
             fillCol = slopeLight >= 0 ? '#e2ecf7' : '#9aa8ba';
             strokeCol = '#7e8da1';
+          } else if (tType === 'grass' || tType === 'shrub') {
+            const avgH = (n + e + s + w) * 0.25;
+            if (snowBucket >= 3 || avgH > 4.2) {
+              // High alpine peaks or heavy snowfall
+              if (steep > 1.4 && slopeLight < -0.4) {
+                fillCol = '#94a3b8'; strokeCol = '#64748b';
+              } else if (slopeLight > 0.35) {
+                fillCol = '#ffffff'; strokeCol = '#cbd5e1';
+              } else if (slopeLight < -0.25) {
+                fillCol = '#b8cde3'; strokeCol = '#8fa9c4';
+              } else {
+                fillCol = '#deecfb'; strokeCol = '#b4cde6';
+              }
+            } else {
+              // Lush green sloped hills (gradually frosted as snowBucket rises)
+              if (steep > 1.6 && slopeLight < -0.5) {
+                fillCol = '#64748b'; strokeCol = '#475569'; // rocky cliff face
+              } else if (slopeLight > 0.35) {
+                fillCol = snowBucket >= 1 ? '#8cb878' : '#6ea354';
+                strokeCol = '#4d7a38';
+              } else if (slopeLight < -0.25) {
+                fillCol = snowBucket >= 1 ? '#5e8554' : '#3d662d';
+                strokeCol = '#2d4d20';
+              } else {
+                fillCol = snowBucket >= 1 ? '#729e63' : '#53853f';
+                strokeCol = '#3f6a2e';
+              }
+            }
           } else {
             // Snow slope with alpine rocky shadow on steep shaded faces
             if (steep > 1.4 && slopeLight < -0.4) {
@@ -1855,7 +1938,7 @@
         }
 
         if (tType === 'ice') {
-          drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z);
+          drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket);
         }
       }
     }
@@ -2002,7 +2085,7 @@
     requestAnimationFrame(renderFrame);
   }
 
-  function drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z) {
+  function drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket = 0) {
     const isIce = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE && state.terrain[y][x] === 'ice';
     const nLand = !isIce(gx, gy - 1);
     const eLand = !isIce(gx + 1, gy);
@@ -2020,8 +2103,8 @@
     const mSW = mid(pS, pW);
     const mWN = mid(pW, pN);
 
-    ctx.fillStyle = '#deecfb';
-    ctx.strokeStyle = '#7dd3fc';
+    ctx.fillStyle = snowBucket >= 2 ? '#deecfb' : (snowBucket === 1 ? '#7da66c' : '#53853f');
+    ctx.strokeStyle = snowBucket >= 2 ? '#7dd3fc' : '#3f6a2e';
     ctx.lineWidth = Math.max(1, 1.4 * z);
 
     // Round off outer corners where two adjacent edges meet land
@@ -2219,9 +2302,9 @@
       state.objects = state.objects.filter(o => o.id !== obj.id);
       if (state.inspectedObjId === obj.id) { state.inspectedObjId = null; renderConfigPanel(); }
       audio.playClick(260); autoSave();
-    } else if (state.terrain[gy][gx] !== 'snow') {
+    } else if (state.terrain[gy][gx] !== 'grass' && state.terrain[gy][gx] !== 'shrub') {
       if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
-      state.terrain[gy][gx] = 'snow';
+      state.terrain[gy][gx] = 'grass';
       audio.playClick(300); autoSave();
     }
   }
