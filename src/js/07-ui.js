@@ -435,10 +435,16 @@
     const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
     setZoom(ZOOM_LEVELS[Math.max(0, (idx === -1 ? 5 : idx) - 1)]);
   };
-  document.getElementById('btn-clear-snow').onclick = () => {
+  function clearSnow() {
     state.snowAccum = 0;
     state.snowGrid = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => 0));
     document.getElementById('accum-label').textContent = '0%';
+    audio.playClick(420);
+  }
+  document.getElementById('btn-clear-snow').onclick = clearSnow;
+  document.getElementById('btn-dialog-clear-snow').onclick = () => {
+    clearSnow();
+    closeAllDockDialogs();
   };
 
   function toggleAudio() {

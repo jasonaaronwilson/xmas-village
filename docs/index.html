@@ -470,6 +470,9 @@
     <button class="btn btn-snow snow-start-btn" data-lvl="3" style="justify-content:space-between;padding:8px 10px;">
       <span>🌬️ 3. Winter Blizzard</span><small style="color:#e0f2fe">Howling gusts</small>
     </button>
+    <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:6px;">
+      <button class="btn" id="btn-dialog-clear-snow" style="width:100%;justify-content:center;padding:7px 10px;">🧹 Clear Snow</button>
+    </div>
   </div>
 </div>
 
@@ -3111,10 +3114,16 @@
     const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
     setZoom(ZOOM_LEVELS[Math.max(0, (idx === -1 ? 5 : idx) - 1)]);
   };
-  document.getElementById('btn-clear-snow').onclick = () => {
+  function clearSnow() {
     state.snowAccum = 0;
     state.snowGrid = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => 0));
     document.getElementById('accum-label').textContent = '0%';
+    audio.playClick(420);
+  }
+  document.getElementById('btn-clear-snow').onclick = clearSnow;
+  document.getElementById('btn-dialog-clear-snow').onclick = () => {
+    clearSnow();
+    closeAllDockDialogs();
   };
 
   function toggleAudio() {
