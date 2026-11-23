@@ -59,6 +59,8 @@
     state.camera.x = pivotX - (pivotX - state.camera.x) * ratio;
     state.camera.y = pivotY - (pivotY - state.camera.y) * ratio;
     state.camera.zoom = clamped;
+    const zl = document.getElementById('zoom-label');
+    if (zl) zl.textContent = `${Math.round(clamped * 100)}%`;
   }
 
   canvas.addEventListener('wheel', e => {

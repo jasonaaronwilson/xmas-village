@@ -417,13 +417,13 @@
   <button class="dock-btn" id="btn-dock-build" title="Build Palette (B)">🏠</button>
   <div class="dock-sep"></div>
   <button class="dock-btn" id="tool-erase" title="Erase / Bulldoze (3 or Right-Click)">🧹</button>
-  <button class="dock-btn" id="btn-rotate" title="Rotate Facing (R)">🔄</button>
   <div class="dock-sep"></div>
   <button class="dock-btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>↩️</button>
   <button class="dock-btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>↪️</button>
   <div class="dock-sep"></div>
   <button class="dock-btn" id="btn-zoom-in" title="Zoom In (+)">➕</button>
   <button class="dock-btn" id="btn-zoom-out" title="Zoom Out (-)">➖</button>
+  <div id="zoom-label" style="font-size:10px;color:var(--text-muted);text-align:center;line-height:1.1;flex-shrink:0;">100%</div>
   <div class="dock-spacer"></div>
   <button class="dock-btn" id="btn-audio" title="Toggle Cozy Ambiance">🔇</button>
   <button class="dock-btn" id="btn-saves" title="Saved Villages & Presets">💾</button>
@@ -2645,6 +2645,8 @@
     state.camera.x = pivotX - (pivotX - state.camera.x) * ratio;
     state.camera.y = pivotY - (pivotY - state.camera.y) * ratio;
     state.camera.zoom = clamped;
+    const zl = document.getElementById('zoom-label');
+    if (zl) zl.textContent = `${Math.round(clamped * 100)}%`;
   }
 
   canvas.addEventListener('wheel', e => {
@@ -3217,7 +3219,6 @@
 
   document.getElementById('tool-inspect').onclick = () => setTool('inspect');
   document.getElementById('tool-erase').onclick = () => setTool('erase');
-  document.getElementById('btn-rotate').onclick = toggleFlip;
   document.getElementById('btn-undo').onclick = undo;
   document.getElementById('btn-redo').onclick = redo;
   document.getElementById('btn-zoom-in').onclick = () => {

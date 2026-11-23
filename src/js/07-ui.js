@@ -465,7 +465,6 @@
 
   document.getElementById('tool-inspect').onclick = () => setTool('inspect');
   document.getElementById('tool-erase').onclick = () => setTool('erase');
-  document.getElementById('btn-rotate').onclick = toggleFlip;
   document.getElementById('btn-undo').onclick = undo;
   document.getElementById('btn-redo').onclick = redo;
   document.getElementById('btn-zoom-in').onclick = () => {
