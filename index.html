@@ -467,6 +467,41 @@
   </div>
 </div>
 
+<!-- Welcome / Initial Terrain Modal (comes up first) -->
+<div id="modal-welcome" class="modal-backdrop open">
+  <div class="modal ui-panel" style="width:500px;">
+    <div class="modal-header">
+      <h3>🏔️ Choose Your Village Terrain</h3>
+      <button class="btn" onclick="closeModal('modal-welcome')" title="Keep Current">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">
+      Pick a starting landscape for your Christmas village. You can also sculpt hills anytime under <strong>Build → Terrain</strong>.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button class="item-card" data-start-preset="victorian" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:var(--accent-gold);font-size:13px;">🎩 Victorian Flat</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Level winter plain with a subtle back rim — ideal for neat streets &amp; town squares.</span>
+      </button>
+      <button class="item-card" data-start-preset="swiss" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:var(--accent-ice);font-size:13px;">🏔️ Swiss Alpine</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Dramatic snow-capped peaks in the back sloping down to a cozy valley &amp; small hills.</span>
+      </button>
+      <button class="item-card" data-start-preset="foothills" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:#4ade80;font-size:13px;">🌲 Rolling Foothills</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Gentle sloped hills across the village with a rising winter ridge behind.</span>
+      </button>
+      <button class="item-card" data-start-preset="lake" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:#38bdf8;font-size:13px;">⛸️ Lakeside &amp; Peaks</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Central frozen pond with sloped snowy banks and alpine peaks in the back.</span>
+      </button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">
+      <button class="btn" id="btn-welcome-sample">✨ Open Sample Village</button>
+      <button class="btn btn-gold" onclick="closeModal('modal-welcome')">Continue Current Map</button>
+    </div>
+  </div>
+</div>
+
 <!-- Save / Load Modal -->
 <div id="modal-saves" class="modal-backdrop">
   <div class="modal ui-panel">
@@ -486,10 +521,23 @@
       <div class="slot-list" id="save-slots-list"></div>
     </div>
     <div>
-      <div class="section-title">Starter Villages & Actions</div>
+      <div class="section-title">New Map — Initial Terrain & Elevation</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <select id="new-terrain-preset" style="flex:1.4;background:#0f172a;color:var(--text-main);border:1px solid var(--panel-border);border-radius:5px;padding:6px 8px;font-size:12px;">
+          <option value="victorian">🎩 Victorian Flat</option>
+          <option value="swiss" selected>🏔️ Swiss Alpine (Back Peaks)</option>
+          <option value="foothills">🌲 Rolling Foothills</option>
+          <option value="lake">⛸️ Lakeside &amp; Peaks</option>
+        </select>
+        <select id="new-terrain-elev" style="flex:1;background:#0f172a;color:var(--text-main);border:1px solid var(--panel-border);border-radius:5px;padding:6px 8px;font-size:12px;">
+          <option value="0">Flat (0)</option>
+          <option value="1" selected>Gentle</option>
+          <option value="2">Dramatic</option>
+        </select>
+      </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn" id="btn-load-sample">✨ Load Cozy Sample Village</button>
-        <button class="btn btn-danger" id="btn-new-village">🗑️ Clear Map (New)</button>
+        <button class="btn btn-snow" id="btn-generate-terrain" style="flex:1;justify-content:center;">🌄 Generate New Map</button>
+        <button class="btn" id="btn-load-sample">✨ Sample Village</button>
       </div>
     </div>
   </div>
@@ -533,6 +581,7 @@
   const GRID_SIZE = 60;
   const TILE_W = 80;
   const TILE_H = 40;
+  const ELEV_STEP = 12;
   const SPRITE_SS = 2; // 2x supersampled vector sprites for razor-sharp anti-aliasing
   const STORAGE_AUTOSAVE = 'xmas_village_autosave_v2';
   const STORAGE_SLOTS = 'xmas_village_slots_v1';
@@ -571,6 +620,8 @@
     { id: 'path',       cat: 'terrain',   name: 'Footpath',         type: 'terrain', desc: 'Winding stone-dusted walkway.' },
     { id: 'ice',        cat: 'terrain',   name: 'Frozen Pond',      type: 'terrain', desc: 'Smooth reflective winter ice.' },
     { id: 'plaza',      cat: 'terrain',   name: 'Timber Plaza',     type: 'terrain', desc: 'Warm wooden town square decking.' },
+    { id: 'elev_up',    cat: 'terrain',   name: 'Raise Hill',       type: 'elev', delta: 1, desc: 'Raise terrain elevation by 1 level.' },
+    { id: 'elev_down',  cat: 'terrain',   name: 'Lower Ground',     type: 'elev', delta: -1, desc: 'Lower terrain elevation by 1 level.' },
 
     { id: 'cottage',    cat: 'buildings', name: 'Cozy Cottage',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Storybook cottage with wreath, shutters & chimney.' },
     { id: 'bakery',     cat: 'buildings', name: 'Cocoa Bakery',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Warm bakery with scalloped awning & glowing display.' },
@@ -601,6 +652,7 @@
   // =========================================================================
   const state = {
     terrain: [],
+    corners: [],
     objects: [],
     selectedTool: 'place',
     selectedCat: 'buildings',
@@ -634,9 +686,69 @@
     state.terrain = Array.from({ length: GRID_SIZE }, () =>
       Array.from({ length: GRID_SIZE }, () => 'snow')
     );
+    state.corners = Array.from({ length: GRID_SIZE + 1 }, () =>
+      Array.from({ length: GRID_SIZE + 1 }, () => 0)
+    );
     state.objects = [];
     state.inspectedObjId = null;
     state.snowAccum = 0;
+  }
+
+  function generateInitialTerrain(preset = 'victorian', elevScale = 1) {
+    initEmptyMap();
+    const scale = elevScale === 0 ? 0.25 : (elevScale === 1 ? 1.0 : 1.65);
+    const mid = GRID_SIZE / 2;
+
+    for (let cy = 0; cy <= GRID_SIZE; cy++) {
+      for (let cx = 0; cx <= GRID_SIZE; cx++) {
+        // Depth from back of isometric diamond (0 = back peak, 2*GRID_SIZE = front)
+        const backDist = (cx + cy) / (GRID_SIZE * 2);
+        const ridge = Math.sin((cx - cy) * 0.22) * 0.8 + Math.cos(cx * 0.14 + cy * 0.11) * 0.6;
+        const smallHill = Math.max(0, Math.sin(cx * 0.18) * Math.cos(cy * 0.18)) * 1.1;
+        const dx = (cx - mid) / mid;
+        const dy = (cy - mid) / mid;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        let h = 0;
+
+        if (preset === 'victorian') {
+          // Mostly flat, gentle rim at the very back
+          if (backDist < 0.18) h = (0.18 - backDist) * 5 * scale;
+        } else if (preset === 'swiss') {
+          // Dramatic Swiss alpine peaks in the back + small cozy hills in front
+          if (backDist < 0.42) {
+            const t = (0.42 - backDist) / 0.42;
+            h = (t * t * 5.2 + Math.max(0, ridge * t * 1.6)) * scale;
+          } else {
+            h = smallHill * 0.65 * scale;
+          }
+        } else if (preset === 'foothills') {
+          const backRise = backDist < 0.32 ? ((0.32 - backDist) / 0.32) * 3.0 : 0;
+          h = (backRise + smallHill * 1.25 + Math.max(0, ridge * 0.4)) * scale;
+        } else if (preset === 'lake') {
+          if (dist < 0.25) {
+            h = 0;
+          } else {
+            const bank = Math.min(1.5, (dist - 0.25) * 3.5);
+            const backRise = backDist < 0.34 ? ((0.34 - backDist) / 0.34) * 3.8 : 0;
+            h = (bank * 0.7 + backRise + Math.max(0, ridge * 0.5)) * scale;
+          }
+        }
+
+        state.corners[cy][cx] = Math.max(0, Math.min(7.5, Math.round(h * 2) / 2));
+      }
+    }
+
+    if (preset === 'lake') {
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const dx = (x + 0.5 - mid) / mid;
+          const dy = (y + 0.5 - mid) / mid;
+          if (Math.sqrt(dx * dx + dy * dy) < 0.24) {
+            state.terrain[y][x] = 'ice';
+          }
+        }
+      }
+    }
   }
 
   // =========================================================================
@@ -1334,6 +1446,24 @@
 
   function getItemThumbnail(catItem) {
     if (catItem.type === 'terrain') return getTerrainSprite(catItem.id, 0, 0, 0);
+    if (catItem.type === 'elev') {
+      const key = `thumb_${catItem.id}`;
+      if (spriteCache.has(key)) return spriteCache.get(key);
+      const { c, ctx } = makeVectorCanvas(64, 56);
+      drawIsoDiamond(ctx, 32, 36, 48, 24, '#deecfb', '#64748b', 1.2);
+      ctx.fillStyle = catItem.delta > 0 ? '#22c55e' : '#38bdf8';
+      ctx.beginPath();
+      if (catItem.delta > 0) {
+        ctx.moveTo(32, 10); ctx.lineTo(42, 22); ctx.lineTo(36, 22); ctx.lineTo(36, 32);
+        ctx.lineTo(28, 32); ctx.lineTo(28, 22); ctx.lineTo(22, 22);
+      } else {
+        ctx.moveTo(32, 34); ctx.lineTo(42, 22); ctx.lineTo(36, 22); ctx.lineTo(36, 12);
+        ctx.lineTo(28, 12); ctx.lineTo(28, 22); ctx.lineTo(22, 22);
+      }
+      ctx.closePath(); ctx.fill();
+      spriteCache.set(key, c);
+      return c;
+    }
     return getObjectSprite({
       type: catItem.id, size: catItem.size || 1, color: 'red',
       fireplace: true, flip: false, horseColor: 'white',
@@ -1449,22 +1579,50 @@
     state.camera.y = viewH / 2 - (GRID_SIZE * TILE_H * state.camera.zoom) / 2;
   }
 
-  function gridToScreen(gx, gy) {
+  function cornerScreen(cx, cy) {
     const z = state.camera.zoom;
+    const h = state.corners[cy]?.[cx] || 0;
     return {
-      x: state.camera.x + (gx - gy) * (TILE_W / 2) * z,
-      y: state.camera.y + (gx + gy) * (TILE_H / 2) * z,
+      x: state.camera.x + (cx - cy) * (TILE_W / 2) * z,
+      y: state.camera.y + (cx + cy) * (TILE_H / 2) * z - h * ELEV_STEP * z,
     };
   }
 
-  function screenToGrid(sx, sy) {
+  function tileElev(gx, gy) {
+    const n = state.corners[gy]?.[gx] || 0;
+    const e = state.corners[gy]?.[gx + 1] || 0;
+    const s = state.corners[gy + 1]?.[gx + 1] || 0;
+    const w = state.corners[gy + 1]?.[gx] || 0;
+    return (n + e + s + w) / 4;
+  }
+
+  function gridToScreen(gx, gy, elev = 0) {
     const z = state.camera.zoom;
-    const rx = (sx - state.camera.x) / z;
-    const ry = (sy - state.camera.y) / z;
-    const gx = Math.floor((rx / (TILE_W / 2) + ry / (TILE_H / 2)) / 2);
-    const gy = Math.floor((ry / (TILE_H / 2) - rx / (TILE_W / 2)) / 2);
-    if (gx < 0 || gy < 0 || gx >= GRID_SIZE || gy >= GRID_SIZE) return null;
-    return { x: gx, y: gy };
+    return {
+      x: state.camera.x + (gx - gy) * (TILE_W / 2) * z,
+      y: state.camera.y + (gx + gy) * (TILE_H / 2) * z - elev * ELEV_STEP * z,
+    };
+  }
+
+  function pointInQuad(px, py, p0, p1, p2, p3) {
+    const cross = (a, b) => (b.x - a.x) * (py - a.y) - (b.y - a.y) * (px - a.x);
+    return cross(p0, p1) >= 0 && cross(p1, p2) >= 0 && cross(p2, p3) >= 0 && cross(p3, p0) >= 0;
+  }
+
+  function screenToGrid(sx, sy) {
+    // Check in front-to-back order using true 4-corner sloped tile quads
+    for (let sum = (GRID_SIZE - 1) * 2; sum >= 0; sum--) {
+      for (let gx = 0; gx < GRID_SIZE; gx++) {
+        const gy = sum - gx;
+        if (gy < 0 || gy >= GRID_SIZE) continue;
+        const pN = cornerScreen(gx, gy);
+        const pE = cornerScreen(gx + 1, gy);
+        const pS = cornerScreen(gx + 1, gy + 1);
+        const pW = cornerScreen(gx, gy + 1);
+        if (pointInQuad(sx, sy, pN, pE, pS, pW)) return { x: gx, y: gy };
+      }
+    }
+    return null;
   }
 
   function findObjectAt(gx, gy) {
@@ -1488,7 +1646,7 @@
   // 6. UNDO / REDO & MUTATION
   // =========================================================================
   function captureSnapshot() {
-    return JSON.stringify({ terrain: state.terrain, objects: state.objects, nextObjId: state.nextObjId });
+    return JSON.stringify({ terrain: state.terrain, corners: state.corners, objects: state.objects, nextObjId: state.nextObjId });
   }
 
   function pushUndo() {
@@ -1501,6 +1659,7 @@
   function restoreSnapshot(snapStr) {
     const data = JSON.parse(snapStr);
     state.terrain = data.terrain;
+    state.corners = data.corners || Array.from({ length: GRID_SIZE + 1 }, () => Array.from({ length: GRID_SIZE + 1 }, () => 0));
     state.objects = data.objects;
     state.nextObjId = data.nextObjId || 1;
     state.inspectedObjId = null;
@@ -1618,20 +1777,79 @@
 
     const z = state.camera.zoom;
 
-    // Terrain
+    // Terrain (true 4-corner sloped isometric quads with angled line segments)
     for (let sum = 0; sum <= (GRID_SIZE - 1) * 2; sum++) {
       for (let gx = 0; gx < GRID_SIZE; gx++) {
         const gy = sum - gx;
         if (gy < 0 || gy >= GRID_SIZE) continue;
-        const pos = gridToScreen(gx, gy);
-        if (pos.x + TILE_W * z < -80 || pos.x - TILE_W * z > viewW + 80 ||
-            pos.y + TILE_H * z < -80 || pos.y - TILE_H * z > viewH + 80) continue;
-        const spr = getTerrainSprite(state.terrain[gy][gx], gx, gy, snowBucket);
-        ctx.drawImage(spr, pos.x - (TILE_W * z) / 2, pos.y, TILE_W * z, TILE_H * z);
+        const n = state.corners[gy]?.[gx] || 0;
+        const e = state.corners[gy]?.[gx + 1] || 0;
+        const s = state.corners[gy + 1]?.[gx + 1] || 0;
+        const w = state.corners[gy + 1]?.[gx] || 0;
+
+        const pN = cornerScreen(gx, gy);
+        const pE = cornerScreen(gx + 1, gy);
+        const pS = cornerScreen(gx + 1, gy + 1);
+        const pW = cornerScreen(gx, gy + 1);
+
+        if (pE.x < -80 || pW.x > viewW + 80 || pS.y < -80 || pN.y > viewH + 80) continue;
+
+        const tType = state.terrain[gy][gx];
+        if (n === e && e === s && s === w) {
+          // Flat tile: use crisp cached vector sprite
+          const spr = getTerrainSprite(tType, gx, gy, snowBucket);
+          ctx.drawImage(spr, pN.x - (TILE_W * z) / 2, pN.y, TILE_W * z, TILE_H * z);
+        } else {
+          // Sloped tile: draw 4-corner sloped quad with angled edges & directional shading
+          const slopeLight = ((w - e) + (n - s)) * 0.5; // positive = sunlit, negative = shaded
+          const steep = Math.max(Math.abs(n - s), Math.abs(e - w));
+          let fillCol, strokeCol;
+
+          if (tType === 'ice') {
+            fillCol = slopeLight >= 0 ? '#7dd3fc' : '#0284c7';
+            strokeCol = '#0369a1';
+          } else if (tType === 'road') {
+            fillCol = slopeLight >= 0 ? '#5b6b82' : '#334155';
+            strokeCol = '#273244';
+          } else if (tType === 'plaza') {
+            fillCol = slopeLight >= 0 ? '#92400e' : '#6c320d';
+            strokeCol = '#451a03';
+          } else if (tType === 'path') {
+            fillCol = slopeLight >= 0 ? '#e2ecf7' : '#9aa8ba';
+            strokeCol = '#7e8da1';
+          } else {
+            // Snow slope with alpine rocky shadow on steep shaded faces
+            if (steep > 1.4 && slopeLight < -0.4) {
+              fillCol = '#94a3b8';
+              strokeCol = '#64748b';
+            } else if (slopeLight > 0.35) {
+              fillCol = '#ffffff';
+              strokeCol = '#cbd5e1';
+            } else if (slopeLight < -0.25) {
+              fillCol = '#b8cde3';
+              strokeCol = '#8fa9c4';
+            } else {
+              fillCol = '#deecfb';
+              strokeCol = '#b4cde6';
+            }
+          }
+
+          ctx.beginPath();
+          ctx.moveTo(pN.x, pN.y);
+          ctx.lineTo(pE.x, pE.y);
+          ctx.lineTo(pS.x, pS.y);
+          ctx.lineTo(pW.x, pW.y);
+          ctx.closePath();
+          ctx.fillStyle = fillCol;
+          ctx.fill();
+          ctx.strokeStyle = strokeCol;
+          ctx.lineWidth = Math.max(0.8, 0.9 * z);
+          ctx.stroke();
+        }
       }
     }
 
-    // Hover highlight
+    // Hover highlight (conforms to sloped quad)
     if (!state.snowMode && state.hoverTile) {
       const { x, y } = state.hoverTile;
       const catItem = CATALOG_MAP[state.selectedItem];
@@ -1640,21 +1858,21 @@
         for (let dy = 0; dy < sz; dy++) {
           const tx = x + dx, ty = y + dy;
           if (tx < GRID_SIZE && ty < GRID_SIZE) {
-            const p = gridToScreen(tx, ty);
-            ctx.save();
-            ctx.translate(p.x, p.y + (TILE_H * z) / 2);
+            const pN = cornerScreen(tx, ty);
+            const pE = cornerScreen(tx + 1, ty);
+            const pS = cornerScreen(tx + 1, ty + 1);
+            const pW = cornerScreen(tx, ty + 1);
             ctx.beginPath();
-            ctx.moveTo(0, -(TILE_H * z) / 2);
-            ctx.lineTo((TILE_W * z) / 2, 0);
-            ctx.lineTo(0, (TILE_H * z) / 2);
-            ctx.lineTo(-(TILE_W * z) / 2, 0);
+            ctx.moveTo(pN.x, pN.y);
+            ctx.lineTo(pE.x, pE.y);
+            ctx.lineTo(pS.x, pS.y);
+            ctx.lineTo(pW.x, pW.y);
             ctx.closePath();
             ctx.strokeStyle = state.selectedTool === 'erase' ? '#ef4444' : '#fbbf24';
             ctx.lineWidth = 2;
             ctx.stroke();
             ctx.fillStyle = state.selectedTool === 'erase' ? 'rgba(239,68,68,0.22)' : 'rgba(251,191,36,0.22)';
             ctx.fill();
-            ctx.restore();
           }
         }
       }
@@ -1673,7 +1891,8 @@
 
     for (const obj of sortedObjects) {
       const s = obj.size || 1;
-      const anchor = gridToScreen(obj.x + s - 1, obj.y + s - 1);
+      const objElev = tileElev(obj.x, obj.y);
+      const anchor = gridToScreen(obj.x + s - 1, obj.y + s - 1, objElev);
       const footCenterY = anchor.y + TILE_H * z;
       const spr = getObjectSprite(obj, snowBucket);
       const drawW = (spr.width / SPRITE_SS) * z;
@@ -1886,6 +2105,18 @@
   function placeAt(gx, gy) {
     const item = CATALOG_MAP[state.selectedItem];
     if (!item) return;
+    if (item.type === 'elev') {
+      pushUndo();
+      for (let dy = 0; dy <= 1; dy++) {
+        for (let dx = 0; dx <= 1; dx++) {
+          const cur = state.corners[gy + dy][gx + dx] || 0;
+          state.corners[gy + dy][gx + dx] = Math.max(0, Math.min(7.5, cur + item.delta * 0.75));
+        }
+      }
+      audio.playClick(item.delta > 0 ? 520 : 340);
+      autoSave();
+      return;
+    }
     if (item.type === 'terrain') {
       if (state.terrain[gy][gx] === item.id) return;
       if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
@@ -2184,9 +2415,10 @@
 
   function serializeVillage() {
     return {
-      version: 2,
+      version: 3,
       gridSize: GRID_SIZE,
       terrain: state.terrain,
+      corners: state.corners,
       objects: state.objects,
       nextObjId: state.nextObjId,
       snowAccum: state.snowAccum,
@@ -2208,9 +2440,17 @@
           state.terrain[y + offset][x + offset] = data.terrain[y][x];
         }
       }
+      if (Array.isArray(data.corners)) {
+        for (let cy = 0; cy < data.corners.length; cy++) {
+          for (let cx = 0; cx < data.corners[cy].length; cx++) {
+            state.corners[cy + offset][cx + offset] = data.corners[cy][cx];
+          }
+        }
+      }
       state.objects = data.objects.map(o => ({ ...o, x: o.x + offset, y: o.y + offset }));
     } else {
       state.terrain = data.terrain;
+      state.corners = data.corners || Array.from({ length: GRID_SIZE + 1 }, () => Array.from({ length: GRID_SIZE + 1 }, () => 0));
       state.objects = data.objects;
     }
     state.nextObjId = data.nextObjId || (state.objects.reduce((m, o) => Math.max(m, o.id), 0) + 1);
@@ -2414,9 +2654,33 @@
   document.getElementById('btn-load-sample').onclick = () => {
     pushUndo(); buildSampleVillage(); autoSave(); renderConfigPanel(); closeModal('modal-saves');
   };
-  document.getElementById('btn-new-village').onclick = () => {
-    if (!confirm('Clear the entire map and start a fresh village?')) return;
-    pushUndo(); initEmptyMap(); autoSave(); renderConfigPanel(); closeModal('modal-saves');
+  document.getElementById('btn-generate-terrain').onclick = () => {
+    if (state.objects.length > 0 && !confirm('Replace the current map with this new terrain?')) return;
+    const preset = document.getElementById('new-terrain-preset').value;
+    const elevScale = Number(document.getElementById('new-terrain-elev').value);
+    pushUndo();
+    generateInitialTerrain(preset, elevScale);
+    autoSave();
+    renderConfigPanel();
+    closeModal('modal-saves');
+  };
+
+  document.querySelectorAll('[data-start-preset]').forEach(btn => {
+    btn.onclick = () => {
+      const preset = btn.dataset.startPreset;
+      pushUndo();
+      generateInitialTerrain(preset, preset === 'victorian' ? 1 : 2);
+      autoSave();
+      renderConfigPanel();
+      closeModal('modal-welcome');
+    };
+  });
+  document.getElementById('btn-welcome-sample').onclick = () => {
+    pushUndo();
+    buildSampleVillage();
+    autoSave();
+    renderConfigPanel();
+    closeModal('modal-welcome');
   };
 
   document.getElementById('btn-share').onclick = () => {
