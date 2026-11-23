@@ -1,0 +1,2692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cozy Christmas Village Editor</title>
+<style>
+  :root {
+    --bg-night: #0b101d;
+    --panel-bg: rgba(18, 25, 42, 0.92);
+    --panel-border: #3a4a6b;
+    --panel-highlight: #5c739c;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent-gold: #fbbf24;
+    --accent-red: #dc2626;
+    --accent-green: #16a34a;
+    --accent-ice: #38bdf8;
+    --font-ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Courier New', Courier, monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-night);
+    color: var(--text-main);
+    font-family: var(--font-ui);
+    font-size: 13px;
+  }
+
+  #game-canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    cursor: crosshair;
+  }
+
+  /* Retro cozy UI panels */
+  .ui-panel {
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    backdrop-filter: blur(6px);
+  }
+
+  /* Top Bar */
+  #top-bar {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    min-height: 46px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    gap: 6px;
+    z-index: 20;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+
+  #top-bar.hidden-editor {
+    transform: translateY(-70px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.4px;
+    color: var(--accent-gold);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn {
+    background: #1e293b;
+    color: var(--text-main);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  }
+
+  .btn:hover {
+    background: #2b3a55;
+    border-color: var(--panel-highlight);
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn.active {
+    background: #2563eb;
+    border-color: #60a5fa;
+    color: #fff;
+  }
+
+  .btn-gold {
+    background: #b45309;
+    border-color: #f59e0b;
+    color: #fffbeb;
+  }
+  .btn-gold:hover {
+    background: #d97706;
+  }
+
+  .btn-snow {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #f0f9ff;
+  }
+  .btn-snow:hover {
+    background: #0369a1;
+  }
+
+  .btn-danger {
+    background: #991b1b;
+    border-color: #ef4444;
+  }
+  .btn-danger:hover {
+    background: #b91c1c;
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Left Palette */
+  #left-palette {
+    position: fixed;
+    top: 66px;
+    left: 10px;
+    bottom: 10px;
+    width: 248px;
+    display: flex;
+    flex-direction: column;
+    z-index: 15;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+
+  #left-palette.hidden-editor {
+    transform: translateX(-270px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .cat-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 6px 6px 0 6px;
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+
+  .cat-tab {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 5px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+  }
+
+  .cat-tab.active {
+    color: var(--accent-gold);
+    background: #1e293b;
+    border-color: var(--panel-border);
+  }
+
+  .item-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    align-content: start;
+  }
+
+  .item-card {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid #2b3954;
+    border-radius: 5px;
+    padding: 6px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+  }
+
+  .item-card:hover {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: var(--panel-highlight);
+  }
+
+  .item-card.selected {
+    background: rgba(37, 99, 235, 0.25);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 1px var(--accent-gold);
+  }
+
+  .item-card canvas {
+    width: 48px;
+    height: 48px;
+    image-rendering: pixelated;
+  }
+
+  .item-card span {
+    font-size: 11px;
+    text-align: center;
+    line-height: 1.15;
+    color: var(--text-main);
+  }
+
+  /* Right Configurator Panel */
+  #right-config {
+    position: fixed;
+    top: 66px;
+    right: 10px;
+    width: 244px;
+    max-height: calc(100vh - 76px);
+    overflow-y: auto;
+    padding: 10px;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+
+  #right-config.hidden-editor {
+    transform: translateX(270px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 3px;
+  }
+
+  .option-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+
+  .option-row label {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .chip {
+    padding: 3px 7px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: var(--text-main);
+    cursor: pointer;
+  }
+
+  .chip.active {
+    background: #2563eb;
+    border-color: #60a5fa;
+    color: #fff;
+  }
+
+  .color-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid #334155;
+    cursor: pointer;
+  }
+
+  .color-dot.active {
+    border-color: var(--accent-gold);
+    transform: scale(1.1);
+  }
+
+  .toggle-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .toggle-pill {
+    width: 30px;
+    height: 16px;
+    background: #334155;
+    border-radius: 999px;
+    position: relative;
+    transition: background 0.15s;
+  }
+
+  .toggle-pill.on {
+    background: var(--accent-green);
+  }
+
+  .toggle-pill::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.15s;
+  }
+
+  .toggle-pill.on::after {
+    transform: translateX(14px);
+  }
+
+  /* Bottom Status / Hint Bar */
+  #bottom-hint {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    z-index: 12;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    white-space: nowrap;
+  }
+
+  #bottom-hint.hidden-editor {
+    opacity: 0;
+  }
+
+  /* Snow Mode Floating Controls */
+  #snow-controls {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(90px);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 25;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+
+  #snow-controls.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 0.92;
+    pointer-events: auto;
+  }
+
+  /* Greeting Banner in Snow / Share Mode */
+  #greeting-banner {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    max-width: 520px;
+    width: calc(100vw - 40px);
+    padding: 14px 20px;
+    text-align: center;
+    z-index: 24;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    border-color: var(--accent-gold);
+    background: rgba(15, 23, 42, 0.88);
+  }
+
+  #greeting-banner.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+
+  #greeting-banner h2 {
+    margin: 0 0 6px 0;
+    color: var(--accent-gold);
+    font-size: 18px;
+  }
+
+  #greeting-banner p {
+    margin: 0 0 8px 0;
+    line-height: 1.45;
+    color: #e2e8f0;
+    white-space: pre-wrap;
+  }
+
+  #greeting-banner .sig {
+    font-style: italic;
+    color: #94a3b8;
+    font-size: 12px;
+  }
+
+  /* Modals */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 16, 0.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    backdrop-filter: blur(3px);
+  }
+
+  .modal-backdrop.open {
+    display: flex;
+  }
+
+  .modal {
+    width: 460px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 8px;
+  }
+
+  .modal-header h3 {
+    margin: 0;
+    color: var(--accent-gold);
+    font-size: 15px;
+  }
+
+  input[type="text"], textarea, select {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    color: var(--text-main);
+    padding: 7px 9px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+
+  input[type="text"]:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+  }
+
+  .slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .slot-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0f172a;
+    border: 1px solid #2b3954;
+    border-radius: 4px;
+    padding: 7px 9px;
+    gap: 8px;
+  }
+
+  .slot-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  .slot-info strong {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .slot-info small {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+</style>
+</head>
+<body>
+
+<canvas id="game-canvas"></canvas>
+
+<!-- Top Toolbar -->
+<div id="top-bar" class="ui-panel">
+  <div class="brand">
+    <span>❄️ Christmas Village Editor</span>
+  </div>
+
+  <div class="toolbar-group">
+    <button class="btn active" id="tool-place" title="Place / Paint (1)">🖌️ Place</button>
+    <button class="btn" id="tool-inspect" title="Inspect & Edit existing item (2)">🔍 Inspect</button>
+    <button class="btn" id="tool-erase" title="Erase / Bulldoze (3 or Right-Click)">🧹 Erase</button>
+    <button class="btn" id="btn-rotate" title="Rotate (R)">🔄 Rotate</button>
+    <button class="btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>↩️ Undo</button>
+    <button class="btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>↪️ Redo</button>
+  </div>
+
+  <div class="toolbar-group">
+    <button class="btn" id="btn-zoom-out" title="Zoom Out (-)">➖</button>
+    <span id="zoom-label" style="font-size:11px;min-width:30px;text-align:center;color:var(--text-muted)">2x</span>
+    <button class="btn" id="btn-zoom-in" title="Zoom In (+)">➕</button>
+    <button class="btn" id="btn-audio" title="Toggle Cozy Ambiance">🔇 Sound</button>
+    <button class="btn" id="btn-saves" title="Save / Load Slots & Presets">💾 Villages</button>
+    <button class="btn btn-gold" id="btn-share" title="Share JSON & Customized Greeting">🎁 Share</button>
+    <button class="btn btn-snow" id="btn-snow-mode" title="Hide Editor & Begin Snowfall">❄️ Snow!</button>
+  </div>
+</div>
+
+<!-- Left Item Palette -->
+<div id="left-palette" class="ui-panel">
+  <div class="cat-tabs" id="cat-tabs">
+    <div class="cat-tab active" data-cat="terrain">Terrain</div>
+    <div class="cat-tab" data-cat="buildings">Buildings</div>
+    <div class="cat-tab" data-cat="decor">Decor</div>
+    <div class="cat-tab" data-cat="living">Living</div>
+  </div>
+  <div class="item-grid" id="item-grid"></div>
+</div>
+
+<!-- Right Configuration Panel -->
+<div id="right-config" class="ui-panel">
+  <div>
+    <div class="section-title" id="config-item-title">Selected Item</div>
+    <div id="config-item-desc" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">
+      Select a tile or building to customize.
+    </div>
+  </div>
+
+  <div id="config-options-container"></div>
+
+  <div>
+    <div class="section-title">Map & Atmosphere</div>
+    <div class="option-row">
+      <label><span>Snow Accumulation</span><span id="accum-label">0%</span></label>
+      <div style="display:flex;gap:4px;">
+        <button class="btn" id="btn-clear-snow" style="flex:1;justify-content:center;font-size:11px;">Sweep Snow</button>
+        <button class="btn" id="btn-center-cam" style="flex:1;justify-content:center;font-size:11px;">Center View</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Hint -->
+<div id="bottom-hint" class="ui-panel">
+  Left-click: Place/Paint • Right-click: Erase • Middle-drag or Space+Drag: Pan • Wheel: Zoom • R: Rotate • Ctrl+Z: Undo
+</div>
+
+<!-- Snow Mode Floating Controls -->
+<div id="snow-controls" class="ui-panel">
+  <span style="font-weight:700;color:var(--accent-ice);font-size:12px;">❄️ Snowfall:</span>
+  <button class="chip snow-lvl-btn active" data-lvl="1">1. Flurries</button>
+  <button class="chip snow-lvl-btn" data-lvl="2">2. Steady</button>
+  <button class="chip snow-lvl-btn" data-lvl="3">3. Blizzard</button>
+  <span id="snow-accum-pill" style="font-size:11px;color:var(--text-muted);min-width:68px;text-align:center;">Depth: 0%</span>
+  <button class="btn" id="btn-snow-audio" style="padding:4px 8px;">🔇</button>
+  <button class="btn" id="btn-snow-greeting" style="padding:4px 8px;">💌 Greeting</button>
+  <button class="btn btn-gold" id="btn-exit-snow">✏️ Editor</button>
+</div>
+
+<!-- Greeting Banner -->
+<div id="greeting-banner" class="ui-panel">
+  <h2 id="banner-title">Season's Greetings!</h2>
+  <p id="banner-msg"></p>
+  <div class="sig" id="banner-sig"></div>
+  <div style="margin-top:10px;display:flex;justify-content:center;gap:8px;">
+    <button class="btn btn-snow" id="btn-close-banner">Admire Village</button>
+  </div>
+</div>
+
+<!-- Save / Load Modal -->
+<div id="modal-saves" class="modal-backdrop">
+  <div class="modal ui-panel">
+    <div class="modal-header">
+      <h3>💾 Saved Villages & Presets</h3>
+      <button class="btn" onclick="closeModal('modal-saves')">✕</button>
+    </div>
+    <div class="option-row">
+      <label>Save Current Village to Browser</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="save-name-input" placeholder="e.g. Pinewood Hollow" />
+        <button class="btn btn-gold" id="btn-save-slot">Save</button>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Your Browser Saves</div>
+      <div class="slot-list" id="save-slots-list"></div>
+    </div>
+    <div>
+      <div class="section-title">Starter Villages & Actions</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn" id="btn-load-sample">✨ Load Cozy Sample Village</button>
+        <button class="btn btn-danger" id="btn-new-village">🗑️ Clear Map (New)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share & Greeting Modal -->
+<div id="modal-share" class="modal-backdrop">
+  <div class="modal ui-panel">
+    <div class="modal-header">
+      <h3>🎁 Share Village & Greeting</h3>
+      <button class="btn" onclick="closeModal('modal-share')">✕</button>
+    </div>
+    <div class="option-row">
+      <label>Greeting Title</label>
+      <input type="text" id="greet-title" placeholder="Merry Christmas & Happy Holidays!" />
+    </div>
+    <div class="option-row">
+      <label>Message for Friends & Family</label>
+      <textarea id="greet-msg" rows="3" placeholder="Wishing you warmth, joy, and cozy winter nights..."></textarea>
+    </div>
+    <div class="option-row">
+      <label>From / Signature</label>
+      <input type="text" id="greet-sig" placeholder="— The Wilson Family" />
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-gold" id="btn-export-json" style="flex:1;justify-content:center;">⬇️ Export Village (.json)</button>
+      <button class="btn btn-snow" id="btn-import-json-trigger" style="flex:1;justify-content:center;">⬆️ Import Village (.json)</button>
+      <input type="file" id="import-json-file" accept=".json,application/json" style="display:none" />
+    </div>
+    <button class="btn" id="btn-preview-greeting" style="justify-content:center;">💌 Preview Greeting in Snow Mode</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // =========================================================================
+  // 1. CONSTANTS & MAP CONFIGURATION
+  // =========================================================================
+  const GRID_SIZE = 32; // 32x32 isometric map
+  const TILE_W = 64;    // Isometric diamond width in base pixel-art space
+  const TILE_H = 32;    // Isometric diamond height in base pixel-art space
+  const STORAGE_AUTOSAVE = 'xmas_village_autosave_v1';
+  const STORAGE_SLOTS = 'xmas_village_slots_v1';
+
+  const PALETTES = {
+    red:    { wall: '#f1e3d3', wallShade: '#d4bfa8', roof: '#991b1b', roofShade: '#7f1d1d', trim: '#78350f', name: 'Festive Red' },
+    green:  { wall: '#e2e8f0', wallShade: '#cbd5e1', roof: '#166534', roofShade: '#14532d', trim: '#5c4033', name: 'Pine Green' },
+    blue:   { wall: '#f8fafc', wallShade: '#cbd5e1', roof: '#1e3a8a', roofShade: '#172554', trim: '#475569', name: 'Winter Blue' },
+    timber: { wall: '#b47b48', wallShade: '#8c5a30', roof: '#475569', roofShade: '#334155', trim: '#5c3a21', name: 'Warm Timber' },
+    ginger: { wall: '#a1623b', wallShade: '#7c4829', roof: '#7c2d12', roofShade: '#5c1f0c', trim: '#fef3c7', name: 'Gingerbread' },
+  };
+
+  const LIGHT_STYLES = [
+    { id: 'none', name: 'None' },
+    { id: 'warm', name: 'Warm White' },
+    { id: 'multi', name: 'Multicolor' },
+    { id: 'candy', name: 'Candy Cane' },
+    { id: 'icicle', name: 'Icicle Blue' },
+  ];
+
+  const LIGHT_MODES = [
+    { id: 'twinkle', name: 'Twinkle' },
+    { id: 'steady', name: 'Steady' },
+    { id: 'chase', name: 'Chase' },
+  ];
+
+  const HORSE_COLORS = [
+    { id: 'white', name: 'Snow White', body: '#f1f5f9', shade: '#cbd5e1', mane: '#94a3b8' },
+    { id: 'chestnut', name: 'Chestnut', body: '#92400e', shade: '#78350f', mane: '#451a03' },
+    { id: 'black', name: 'Midnight', body: '#334155', shade: '#1e293b', mane: '#0f172a' },
+  ];
+
+  // Item catalog
+  const CATALOG = [
+    // TERRAIN
+    { id: 'snow',       cat: 'terrain',   name: 'Snowy Meadow',     type: 'terrain', desc: 'Crisp winter snow ground.' },
+    { id: 'road',       cat: 'terrain',   name: 'Cobble Street',    type: 'terrain', desc: 'Cozy stone village street.' },
+    { id: 'path',       cat: 'terrain',   name: 'Footpath',         type: 'terrain', desc: 'Winding snowy walkway.' },
+    { id: 'ice',        cat: 'terrain',   name: 'Frozen Pond',      type: 'terrain', desc: 'Glistening ice for skating.' },
+    { id: 'plaza',      cat: 'terrain',   name: 'Timber Plaza',     type: 'terrain', desc: 'Wooden town square deck.' },
+
+    // BUILDINGS
+    { id: 'cottage',    cat: 'buildings', name: 'Cozy Cottage',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Warm stone & timber cottage with chimney.' },
+    { id: 'bakery',     cat: 'buildings', name: 'Cocoa Bakery',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Village bakery with striped awning & warm glow.' },
+    { id: 'workshop',   cat: 'buildings', name: 'Toy Workshop',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Festive workshop full of holiday cheer.' },
+    { id: 'cabin',      cat: 'buildings', name: 'Log Cabin',        type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Rustic log cabin with crackling hearth.' },
+    { id: 'chapel',     cat: 'buildings', name: 'Steeple Chapel',   type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: false, hasFlip: true, desc: 'Quaint village chapel with bell tower.' },
+    { id: 'townhall',   cat: 'buildings', name: 'Grand Town Hall',  type: 'object', size: 2, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: false, desc: '2x2 centerpiece hall with clock tower.' },
+
+    // DECOR
+    { id: 'pine',       cat: 'decor',     name: 'Pine Tree',        type: 'object', size: 1, hasLights: true, desc: 'Snow-dusted evergreen tree.' },
+    { id: 'grandtree',  cat: 'decor',     name: 'Village Tree',     type: 'object', size: 1, hasLights: true, desc: 'Tall Christmas tree with golden star.' },
+    { id: 'lamppost',   cat: 'decor',     name: 'Lamppost',         type: 'object', size: 1, desc: 'Wrought-iron streetlamp casting warm light.' },
+    { id: 'snowman',    cat: 'decor',     name: 'Snowman',          type: 'object', size: 1, hasFlip: true, desc: 'Jolly snowman with scarf and top hat.' },
+    { id: 'stall',      cat: 'decor',     name: 'Market Stall',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFlip: true, desc: 'Holiday market booth with garlands.' },
+    { id: 'bench',      cat: 'decor',     name: 'Park Bench',       type: 'object', size: 1, hasFlip: true, desc: 'Snowy wooden bench for resting.' },
+    { id: 'bonfire',    cat: 'decor',     name: 'Hearth Brazier',   type: 'object', size: 1, desc: 'Crackling outdoor fire pit for warmth.' },
+
+    // LIVING & FESTIVE
+    { id: 'sleigh',     cat: 'living',    name: "Santa's Sleigh",   type: 'object', size: 1, hasLights: true, hasFlip: true, desc: 'Crimson sleigh packed with presents.' },
+    { id: 'horse',      cat: 'living',    name: 'Winter Horse',     type: 'object', size: 1, hasHorseColor: true, hasFlip: true, desc: 'Gentle horse with festive saddle blanket.' },
+    { id: 'carolers',   cat: 'living',    name: 'Carolers',         type: 'object', size: 1, desc: 'Trio of bundled-up singers with lantern.' },
+    { id: 'skater',     cat: 'living',    name: 'Ice Skater',       type: 'object', size: 1, hasFlip: true, desc: 'Cheerful villager gliding in winter coat.' },
+    { id: 'reindeer',   cat: 'living',    name: 'Reindeer',         type: 'object', size: 1, hasFlip: true, desc: 'Festive reindeer with red collar.' },
+  ];
+
+  const CATALOG_MAP = Object.fromEntries(CATALOG.map(c => [c.id, c]));
+
+  // =========================================================================
+  // 2. GAME STATE
+  // =========================================================================
+  const state = {
+    terrain: [],     // GRID_SIZE x GRID_SIZE strings
+    objects: [],     // Array of { id, type, x, y, size, color, lights, lightMode, fireplace, flip, horseColor }
+    selectedTool: 'place', // 'place' | 'inspect' | 'erase'
+    selectedCat: 'terrain',
+    selectedItem: 'cottage',
+    config: {
+      color: 'red',
+      lights: 'warm',
+      lightMode: 'twinkle',
+      fireplace: true,
+      flip: false,
+      horseColor: 'white',
+    },
+    inspectedObjId: null,
+    camera: {
+      x: 0,
+      y: 0,
+      zoom: 2, // integer 1..4
+    },
+    hoverTile: null, // { x, y }
+    snowMode: false,
+    snowLevel: 1,    // 1, 2, 3
+    snowAccum: 0,    // 0.0 to 1.0
+    greeting: {
+      title: 'Season\'s Greetings!',
+      message: 'Welcome to our cozy Christmas village. Watch the snow fall and enjoy the warm holiday lights!',
+      signature: '— With warm wishes',
+    },
+    undoStack: [],
+    redoStack: [],
+    nextObjId: 1,
+    audioEnabled: false,
+  };
+
+  function initEmptyMap() {
+    state.terrain = Array.from({ length: GRID_SIZE }, () =>
+      Array.from({ length: GRID_SIZE }, () => 'snow')
+    );
+    state.objects = [];
+    state.inspectedObjId = null;
+    state.snowAccum = 0;
+  }
+
+  // =========================================================================
+  // 3. PIXEL ART SPRITE ENGINE (Offscreen 16-bit Canvas Rendering)
+  // =========================================================================
+  const spriteCache = new Map();
+
+  function makeCanvas(w, h) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    return { c, ctx };
+  }
+
+  // Draw an isometric diamond on pixel canvas
+  function drawIsoDiamond(ctx, cx, cy, w, h, fill, stroke) {
+    const hw = w / 2;
+    const hh = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - hh);
+    ctx.lineTo(cx + hw, cy);
+    ctx.lineTo(cx, cy + hh);
+    ctx.lineTo(cx - hw, cy);
+    ctx.closePath();
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  // Deterministic pseudo-random for pixel texture
+  function hash2(x, y, s = 0) {
+    let n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  // Render terrain tile into a 64x32 offscreen canvas
+  function getTerrainSprite(type, tx, ty, snowBucket) {
+    // snowBucket: 0 (0%), 1 (25%), 2 (50%), 3 (75%), 4 (100%)
+    const variant = ((tx * 7 + ty * 13) & 3);
+    const key = `t_${type}_${variant}_${snowBucket}`;
+    if (spriteCache.has(key)) return spriteCache.get(key);
+
+    const { c, ctx } = makeCanvas(TILE_W, TILE_H);
+    const cx = TILE_W / 2;
+    const cy = TILE_H / 2;
+
+    if (type === 'snow') {
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#dbeafe', '#bfdbfe');
+      // Subtle 16-bit snow texture
+      for (let i = 0; i < 18; i++) {
+        const rx = Math.floor(hash2(i, variant, 1) * 44) + 10;
+        const ry = Math.floor(hash2(i, variant, 2) * 20) + 6;
+        if (Math.abs(rx - cx) / 30 + Math.abs(ry - cy) / 14 < 0.9) {
+          ctx.fillStyle = i % 3 === 0 ? '#ffffff' : '#c7d9f2';
+          ctx.fillRect(rx, ry, 2, 1);
+        }
+      }
+    } else if (type === 'road') {
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#475569', '#334155');
+      // Cobblestones
+      for (let py = 4; py < TILE_H - 4; py += 4) {
+        for (let px = 8; px < TILE_W - 8; px += 6) {
+          const dx = Math.abs(px - cx) / 30;
+          const dy = Math.abs(py - cy) / 14;
+          if (dx + dy < 0.88) {
+            ctx.fillStyle = ((px + py + variant) % 5 === 0) ? '#64748b' : '#3b485c';
+            ctx.fillRect(px + (py % 8 === 0 ? 2 : 0), py, 4, 2);
+          }
+        }
+      }
+    } else if (type === 'path') {
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#cbd5e1', '#94a3b8');
+      drawIsoDiamond(ctx, cx, cy, TILE_W - 14, TILE_H - 7, '#94a3b8', null);
+      for (let i = 0; i < 12; i++) {
+        const rx = Math.floor(hash2(i, variant, 5) * 34) + 15;
+        const ry = Math.floor(hash2(i, variant, 6) * 14) + 9;
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(rx, ry, 2, 1);
+      }
+    } else if (type === 'ice') {
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#38bdf8', '#0284c7');
+      drawIsoDiamond(ctx, cx, cy, TILE_W - 6, TILE_H - 3, '#7dd3fc', null);
+      // Ice shine lines
+      ctx.fillStyle = '#e0f2fe';
+      ctx.fillRect(22, 12, 10, 1);
+      ctx.fillRect(28, 17, 12, 1);
+      ctx.fillRect(18, 19, 6, 1);
+    } else if (type === 'plaza') {
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#78350f', '#451a03');
+      for (let py = 4; py < TILE_H - 4; py += 3) {
+        const span = Math.floor((1 - Math.abs(py - cy) / 16) * 28);
+        if (span > 2) {
+          ctx.fillStyle = py % 6 === 0 ? '#92400e' : '#6c320d';
+          ctx.fillRect(cx - span, py, span * 2, 2);
+        }
+      }
+    }
+
+    // Apply snow accumulation overlay on non-snow tiles (or extra drift on snow)
+    if (snowBucket > 0) {
+      const density = snowBucket * 0.22;
+      for (let py = 2; py < TILE_H - 2; py += 2) {
+        for (let px = 4; px < TILE_W - 4; px += 2) {
+          const dx = Math.abs(px - cx) / 31;
+          const dy = Math.abs(py - cy) / 15;
+          if (dx + dy < 0.95 && hash2(px, py, 9) < density) {
+            ctx.fillStyle = type === 'snow' ? '#ffffff' : '#e2e8f0';
+            ctx.fillRect(px, py, 2, 1);
+          }
+        }
+      }
+    }
+
+    spriteCache.set(key, c);
+    return c;
+  }
+
+  // Helper to draw an isometric 3D box in pixel-art space
+  // Base center at (cx, by), half-width hw, half-depth hd, height h
+  function drawIsoBox(ctx, cx, by, hw, hd, h, leftCol, rightCol, topCol) {
+    // Left face
+    ctx.fillStyle = leftCol;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, by - hd);
+    ctx.lineTo(cx, by);
+    ctx.lineTo(cx, by - h);
+    ctx.lineTo(cx - hw, by - hd - h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right face
+    ctx.fillStyle = rightCol;
+    ctx.beginPath();
+    ctx.moveTo(cx, by);
+    ctx.lineTo(cx + hw, by - hd);
+    ctx.lineTo(cx + hw, by - hd - h);
+    ctx.lineTo(cx, by - h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Top face
+    if (topCol) {
+      ctx.fillStyle = topCol;
+      ctx.beginPath();
+      ctx.moveTo(cx, by - h - hd * 2);
+      ctx.lineTo(cx + hw, by - hd - h);
+      ctx.lineTo(cx, by - h);
+      ctx.lineTo(cx - hw, by - hd - h);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Draw a pitched isometric roof with snow cap
+  function drawPitchedRoof(ctx, cx, by, hw, hd, wallH, roofH, roofCol, roofShade, snowThick) {
+    const base = by - wallH;
+    const ridgeY = base - hd - roofH;
+
+    // Left slope
+    ctx.fillStyle = roofCol;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw - 2, base - hd);
+    ctx.lineTo(cx, base + 1);
+    ctx.lineTo(cx + 2, ridgeY + 2);
+    ctx.lineTo(cx - hw + 4, ridgeY - hd / 2 + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right gable/slope
+    ctx.fillStyle = roofShade;
+    ctx.beginPath();
+    ctx.moveTo(cx, base + 1);
+    ctx.lineTo(cx + hw + 2, base - hd);
+    ctx.lineTo(cx + 2, ridgeY + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Snow on roof
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.moveTo(cx - hw - 1, base - hd - 1);
+    ctx.lineTo(cx, base - 1);
+    ctx.lineTo(cx + 2, ridgeY + 2);
+    ctx.lineTo(cx - hw + 4, ridgeY - hd / 2 + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Roof edge trim
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(cx - hw - 1, base - hd - 1, 3, 2 + snowThick);
+    ctx.fillRect(cx - 1, base - 1, 3, 2 + snowThick);
+  }
+
+  // Draw a pixel window (glowing if lit)
+  function drawWindow(ctx, x, y, w, h, lit) {
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+    ctx.fillStyle = lit ? '#fde047' : '#334155';
+    ctx.fillRect(x, y, w, h);
+    if (lit) {
+      ctx.fillStyle = '#fef9c3';
+      ctx.fillRect(x + 1, y + 1, Math.max(1, w - 2), Math.max(1, h - 2));
+    }
+    // Mullion cross
+    ctx.fillStyle = '#475569';
+    if (w >= 4) ctx.fillRect(x + Math.floor(w / 2), y, 1, h);
+    if (h >= 4) ctx.fillRect(x, y + Math.floor(h / 2), w, 1);
+  }
+
+  // Build static base sprite for an object (lights & smoke drawn dynamically on top!)
+  function getObjectSprite(obj, snowBucket) {
+    const key = `o_${obj.type}_${obj.color}_${obj.fireplace ? 1 : 0}_${obj.flip ? 1 : 0}_${obj.horseColor || 'w'}_${snowBucket}`;
+    if (spriteCache.has(key)) return spriteCache.get(key);
+
+    const isBig = obj.size === 2;
+    const W = isBig ? 128 : 64;
+    const H = isBig ? 112 : 80;
+    const { c, ctx } = makeCanvas(W, H);
+    const cx = W / 2;
+    const by = H - 8; // Base bottom vertex
+    const pal = PALETTES[obj.color] || PALETTES.red;
+    const snowThick = snowBucket >= 2 ? 2 : (snowBucket === 1 ? 1 : 0);
+    const lit = !!obj.fireplace;
+
+    if (obj.type === 'cottage') {
+      drawIsoBox(ctx, cx, by, 20, 10, 18, pal.wall, pal.wallShade, null);
+      // Timber beams
+      ctx.fillStyle = pal.trim;
+      ctx.fillRect(cx - 20, by - 28, 2, 18);
+      ctx.fillRect(cx - 1, by - 18, 2, 18);
+      ctx.fillRect(cx + 18, by - 28, 2, 18);
+      // Door
+      ctx.fillStyle = '#5c3a21';
+      ctx.fillRect(cx - 11, by - 14, 6, 10);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cx - 7, by - 9, 1, 1);
+      // Windows
+      drawWindow(ctx, cx + 5, by - 16, 6, 6, lit);
+      drawWindow(ctx, cx - 16, by - 21, 4, 5, lit);
+      // Roof
+      drawPitchedRoof(ctx, cx, by, 20, 10, 18, 16, pal.roof, pal.roofShade, snowThick);
+      // Chimney
+      ctx.fillStyle = '#7f1d1d';
+      ctx.fillRect(cx + 6, by - 44, 6, 14);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(cx + 5, by - 45, 8, 2 + snowThick);
+    }
+    else if (obj.type === 'bakery') {
+      drawIsoBox(ctx, cx, by, 22, 11, 22, pal.wall, pal.wallShade, null);
+      // Striped awning
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#f8fafc';
+        ctx.fillRect(cx - 18 + i * 3, by - 16 + Math.floor(i * 1.4), 3, 4);
+      }
+      // Shop window
+      drawWindow(ctx, cx + 4, by - 16, 9, 8, true);
+      drawWindow(ctx, cx + 5, by - 28, 6, 5, lit);
+      drawPitchedRoof(ctx, cx, by, 22, 11, 22, 15, pal.roof, pal.roofShade, snowThick);
+      // Chimney
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(cx - 12, by - 46, 5, 12);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx - 13, by - 47, 7, 2);
+    }
+    else if (obj.type === 'workshop') {
+      drawIsoBox(ctx, cx, by, 22, 11, 20, pal.wall, pal.wallShade, null);
+      // Signboard
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cx + 4, by - 23, 10, 5);
+      ctx.fillStyle = '#991b1b';
+      ctx.fillRect(cx + 5, by - 22, 8, 3);
+      drawWindow(ctx, cx - 15, by - 18, 7, 6, lit);
+      drawWindow(ctx, cx + 6, by - 14, 7, 6, lit);
+      drawPitchedRoof(ctx, cx, by, 22, 11, 20, 17, pal.roof, pal.roofShade, snowThick);
+      // Brick chimney
+      ctx.fillStyle = '#991b1b';
+      ctx.fillRect(cx - 8, by - 47, 6, 13);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx - 9, by - 48, 8, 2);
+    }
+    else if (obj.type === 'cabin') {
+      // Log texture
+      drawIsoBox(ctx, cx, by, 20, 10, 16, '#8c5a30', '#6b4222', null);
+      for (let y = 2; y < 16; y += 3) {
+        ctx.fillStyle = '#5c3a21';
+        ctx.fillRect(cx - 19, by - 10 - y, 18, 1);
+      }
+      ctx.fillStyle = '#451a03';
+      ctx.fillRect(cx - 11, by - 13, 6, 9);
+      drawWindow(ctx, cx + 5, by - 15, 6, 5, lit);
+      drawPitchedRoof(ctx, cx, by, 20, 10, 16, 14, '#475569', '#334155', snowThick);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(cx + 7, by - 40, 5, 13);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx + 6, by - 41, 7, 2);
+    }
+    else if (obj.type === 'chapel') {
+      drawIsoBox(ctx, cx, by, 18, 9, 20, pal.wall, pal.wallShade, null);
+      drawPitchedRoof(ctx, cx, by, 18, 9, 20, 14, pal.roof, pal.roofShade, snowThick);
+      // Steeple tower
+      drawIsoBox(ctx, cx, by - 26, 7, 4, 16, pal.wall, pal.wallShade, null);
+      // Spire
+      ctx.fillStyle = pal.roof;
+      ctx.beginPath();
+      ctx.moveTo(cx - 8, by - 45);
+      ctx.lineTo(cx + 8, by - 45);
+      ctx.lineTo(cx, by - 64);
+      ctx.closePath();
+      ctx.fill();
+      // Golden cross
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cx, by - 70, 1, 6);
+      ctx.fillRect(cx - 2, by - 68, 5, 1);
+      // Arched stained glass
+      drawWindow(ctx, cx + 5, by - 16, 5, 9, true);
+      drawWindow(ctx, cx - 10, by - 16, 5, 9, true);
+    }
+    else if (obj.type === 'townhall') {
+      drawIsoBox(ctx, cx, by, 42, 21, 28, pal.wall, pal.wallShade, null);
+      // Columns & grand door
+      ctx.fillStyle = '#5c3a21';
+      ctx.fillRect(cx - 12, by - 16, 8, 12);
+      for (let i = -32; i <= 26; i += 11) {
+        if (Math.abs(i) > 5) {
+          drawWindow(ctx, cx + i, by - 24, 6, 8, lit);
+        }
+      }
+      drawPitchedRoof(ctx, cx, by, 42, 21, 28, 22, pal.roof, pal.roofShade, snowThick);
+      // Clock Tower
+      drawIsoBox(ctx, cx, by - 46, 10, 5, 22, pal.wall, pal.wallShade, null);
+      // Clock face
+      ctx.fillStyle = '#fef3c7';
+      ctx.fillRect(cx + 2, by - 62, 6, 6);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(cx + 4, by - 60, 1, 3);
+      ctx.fillRect(cx + 4, by - 58, 3, 1);
+      // Tower roof
+      ctx.fillStyle = pal.roof;
+      ctx.beginPath();
+      ctx.moveTo(cx - 11, by - 72);
+      ctx.lineTo(cx + 11, by - 72);
+      ctx.lineTo(cx, by - 88);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(cx - 4, by - 80, 8, 2);
+    }
+    else if (obj.type === 'pine' || obj.type === 'grandtree') {
+      const tall = obj.type === 'grandtree';
+      // Trunk
+      ctx.fillStyle = '#5c3a21';
+      ctx.fillRect(cx - 2, by - 12, 4, 8);
+      const tiers = tall ? 4 : 3;
+      for (let t = 0; t < tiers; t++) {
+        const w = (tall ? 20 : 15) - t * 3;
+        const y0 = by - 11 - t * 9;
+        const h = 14;
+        ctx.fillStyle = t % 2 === 0 ? '#14532d' : '#166534';
+        ctx.beginPath();
+        ctx.moveTo(cx - w, y0);
+        ctx.lineTo(cx + w, y0);
+        ctx.lineTo(cx, y0 - h);
+        ctx.closePath();
+        ctx.fill();
+        // Snow on tips
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fillRect(cx - w + 1, y0 - 2, 4, 2);
+        ctx.fillRect(cx + w - 5, y0 - 2, 4, 2);
+        if (snowThick > 0) {
+          ctx.fillRect(cx - Math.floor(w / 2), y0 - Math.floor(h / 2), w, 2);
+        }
+      }
+      if (tall) {
+        // Golden Star
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(cx - 1, by - 56, 3, 5);
+        ctx.fillRect(cx - 2, by - 55, 5, 3);
+      }
+    }
+    else if (obj.type === 'lamppost') {
+      // Base & pole
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(cx - 2, by - 8, 4, 4);
+      ctx.fillRect(cx - 1, by - 36, 2, 29);
+      ctx.fillRect(cx - 4, by - 36, 8, 2);
+      // Lantern
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(cx - 3, by - 42, 6, 6);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(cx - 4, by - 44, 8, 2);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(cx - 3, by - 45, 6, 1 + snowThick);
+    }
+    else if (obj.type === 'snowman') {
+      // 3 snowballs
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(cx - 7, by - 13, 14, 9);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - 6, by - 14, 12, 8);
+      ctx.fillRect(cx - 5, by - 22, 10, 8);
+      ctx.fillRect(cx - 4, by - 29, 8, 7);
+      // Scarf
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx - 4, by - 23, 8, 2);
+      ctx.fillRect(cx + 2, by - 21, 2, 4);
+      // Top hat
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(cx - 5, by - 31, 10, 2);
+      ctx.fillRect(cx - 3, by - 36, 6, 5);
+      // Eyes & Carrot nose
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(cx - 2, by - 27, 1, 1);
+      ctx.fillRect(cx + 1, by - 27, 1, 1);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(cx, by - 26, 3, 1);
+    }
+    else if (obj.type === 'stall') {
+      drawIsoBox(ctx, cx, by, 14, 7, 9, '#92400e', '#78350f', '#b45309');
+      // Posts
+      ctx.fillStyle = '#5c3a21';
+      ctx.fillRect(cx - 12, by - 24, 2, 16);
+      ctx.fillRect(cx + 10, by - 24, 2, 16);
+      // Canopy
+      for (let i = -14; i < 14; i += 4) {
+        ctx.fillStyle = (Math.abs(i) % 8 === 0) ? pal.roof : '#f8fafc';
+        ctx.fillRect(cx + i, by - 26, 4, 5);
+      }
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(cx - 14, by - 27, 28, 1 + snowThick);
+    }
+    else if (obj.type === 'bench') {
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(cx - 10, by - 10, 20, 3);
+      ctx.fillRect(cx - 10, by - 16, 20, 4);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(cx - 9, by - 8, 2, 4);
+      ctx.fillRect(cx + 7, by - 8, 2, 4);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(cx - 10, by - 17, 20, 1 + snowThick);
+    }
+    else if (obj.type === 'bonfire') {
+      // Stone ring
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(cx - 8, by - 8, 16, 5);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(cx - 5, by - 10, 10, 3);
+    }
+    else if (obj.type === 'sleigh') {
+      // Runners
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cx - 12, by - 6, 24, 2);
+      ctx.fillRect(cx + 10, by - 9, 3, 3);
+      // Body
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx - 10, by - 15, 20, 8);
+      ctx.fillRect(cx - 12, by - 19, 6, 5);
+      // Gold trim
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(cx - 10, by - 15, 20, 1);
+      // Gift sack
+      ctx.fillStyle = '#16a34a';
+      ctx.fillRect(cx - 7, by - 21, 7, 6);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(cx + 1, by - 19, 5, 4);
+    }
+    else if (obj.type === 'horse') {
+      const hc = HORSE_COLORS.find(h => h.id === obj.horseColor) || HORSE_COLORS[0];
+      // Legs
+      ctx.fillStyle = hc.shade;
+      ctx.fillRect(cx - 7, by - 11, 2, 7);
+      ctx.fillRect(cx - 3, by - 11, 2, 7);
+      ctx.fillRect(cx + 3, by - 11, 2, 7);
+      ctx.fillRect(cx + 6, by - 11, 2, 7);
+      // Body
+      ctx.fillStyle = hc.body;
+      ctx.fillRect(cx - 8, by - 18, 16, 8);
+      // Festive red saddle blanket
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx - 4, by - 18, 8, 5);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cx - 4, by - 14, 8, 1);
+      // Neck & head
+      ctx.fillStyle = hc.body;
+      ctx.fillRect(cx + 5, by - 25, 5, 8);
+      ctx.fillRect(cx + 7, by - 26, 6, 4);
+      // Mane & tail
+      ctx.fillStyle = hc.mane;
+      ctx.fillRect(cx - 10, by - 17, 2, 7);
+      ctx.fillRect(cx + 4, by - 25, 2, 6);
+    }
+    else if (obj.type === 'carolers') {
+      const coats = ['#dc2626', '#16a34a', '#2563eb'];
+      const xs = [-8, 0, 8];
+      xs.forEach((dx, i) => {
+        ctx.fillStyle = coats[i];
+        ctx.fillRect(cx + dx - 3, by - 16, 6, 9);
+        ctx.fillStyle = '#fde68a';
+        ctx.fillRect(cx + dx - 2, by - 21, 4, 4);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(cx + dx - 2, by - 23, 4, 2);
+        // Songbook
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(cx + dx - 1, by - 14, 3, 3);
+      });
+    }
+    else if (obj.type === 'skater') {
+      // Skates
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(cx - 4, by - 5, 4, 1);
+      ctx.fillRect(cx + 1, by - 5, 4, 1);
+      // Coat & scarf
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(cx - 4, by - 15, 8, 9);
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx - 3, by - 16, 6, 2);
+      // Head & beanie
+      ctx.fillStyle = '#fde68a';
+      ctx.fillRect(cx - 2, by - 20, 4, 4);
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx - 3, by - 22, 6, 2);
+    }
+    else if (obj.type === 'reindeer') {
+      // Legs
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(cx - 6, by - 11, 2, 7);
+      ctx.fillRect(cx + 4, by - 11, 2, 7);
+      // Body
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(cx - 7, by - 17, 14, 7);
+      // Neck & head
+      ctx.fillRect(cx + 4, by - 24, 4, 8);
+      ctx.fillRect(cx + 6, by - 25, 5, 4);
+      // Red collar & nose
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(cx + 4, by - 19, 4, 2);
+      ctx.fillRect(cx + 11, by - 24, 1, 1);
+      // Antlers
+      ctx.fillStyle = '#d6d3d1';
+      ctx.fillRect(cx + 5, by - 29, 1, 4);
+      ctx.fillRect(cx + 4, by - 28, 3, 1);
+    }
+
+    // Flip horizontally if requested
+    if (obj.flip) {
+      const flipped = makeCanvas(W, H);
+      flipped.ctx.translate(W, 0);
+      flipped.ctx.scale(-1, 1);
+      flipped.ctx.drawImage(c, 0, 0);
+      spriteCache.set(key, flipped.c);
+      return flipped.c;
+    }
+
+    spriteCache.set(key, c);
+    return c;
+  }
+
+  // Generate thumbnail for item palette
+  function getItemThumbnail(catItem) {
+    if (catItem.type === 'terrain') {
+      return getTerrainSprite(catItem.id, 0, 0, 0);
+    }
+    return getObjectSprite({
+      type: catItem.id,
+      size: catItem.size || 1,
+      color: 'red',
+      fireplace: true,
+      flip: false,
+      horseColor: 'white',
+    }, 0);
+  }
+
+  // =========================================================================
+  // 4. WEB AUDIO COZY AMBIANCE ENGINE
+  // =========================================================================
+  const audio = {
+    ctx: null,
+    master: null,
+    windGain: null,
+    fireGain: null,
+    chimeTimer: 0,
+    init() {
+      if (this.ctx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.0;
+      this.master.connect(this.ctx.destination);
+
+      // Create pink-ish noise buffer for wind & fireplace
+      const bufSize = this.ctx.sampleRate * 2;
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < bufSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.997 * b0 + white * 0.029;
+        b1 = 0.985 * b1 + white * 0.032;
+        b2 = 0.950 * b2 + white * 0.048;
+        data[i] = (b0 + b1 + b2 + white * 0.05) * 0.4;
+      }
+
+      // Soft winter wind
+      const windSrc = this.ctx.createBufferSource();
+      windSrc.buffer = buf;
+      windSrc.loop = true;
+      const windFilter = this.ctx.createBiquadFilter();
+      windFilter.type = 'lowpass';
+      windFilter.frequency.value = 340;
+      this.windGain = this.ctx.createGain();
+      this.windGain.gain.value = 0.12;
+      windSrc.connect(windFilter);
+      windFilter.connect(this.windGain);
+      this.windGain.connect(this.master);
+      windSrc.start();
+
+      // Fireplace crackle
+      const fireSrc = this.ctx.createBufferSource();
+      fireSrc.buffer = buf;
+      fireSrc.loop = true;
+      const fireFilter = this.ctx.createBiquadFilter();
+      fireFilter.type = 'bandpass';
+      fireFilter.frequency.value = 1400;
+      fireFilter.Q.value = 1.8;
+      this.fireGain = this.ctx.createGain();
+      this.fireGain.gain.value = 0.0;
+      fireSrc.connect(fireFilter);
+      fireFilter.connect(this.fireGain);
+      this.fireGain.connect(this.master);
+      fireSrc.start();
+    },
+    setEnabled(on) {
+      if (on) this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      this.master.gain.setTargetAtTime(on ? 0.55 : 0.0, this.ctx.currentTime, 0.2);
+    },
+    playClick(freq = 520) {
+      if (!state.audioEnabled || !this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.6, this.ctx.currentTime + 0.06);
+      g.gain.setValueAtTime(0.08, this.ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.07);
+      osc.connect(g);
+      g.connect(this.master);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.08);
+    },
+    playChime() {
+      if (!state.audioEnabled || !this.ctx) return;
+      // Cozy holiday pentatonic notes (C5, E5, G5, A5, B5, D6)
+      const notes = [523.25, 659.25, 783.99, 880.0, 987.77, 1174.66];
+      const f = notes[Math.floor(Math.random() * notes.length)];
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, this.ctx.currentTime);
+      g.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.04, this.ctx.currentTime + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0005, this.ctx.currentTime + 1.6);
+      osc.connect(g);
+      g.connect(this.master);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 1.7);
+    },
+    updateAmbiance(dt) {
+      if (!state.audioEnabled || !this.ctx) return;
+      // Wind scales with snow level when in snow mode
+      const targetWind = state.snowMode ? (0.1 + state.snowLevel * 0.12) : 0.08;
+      this.windGain.gain.setTargetAtTime(targetWind, this.ctx.currentTime, 0.5);
+
+      // Fire scales with number of lit fireplaces/bonfires
+      const fireCount = state.objects.filter(o => o.fireplace || o.type === 'bonfire').length;
+      const targetFire = Math.min(0.28, fireCount * 0.035);
+      this.fireGain.gain.setTargetAtTime(targetFire, this.ctx.currentTime, 0.5);
+
+      this.chimeTimer -= dt;
+      if (this.chimeTimer <= 0) {
+        this.playChime();
+        this.chimeTimer = 3.5 + Math.random() * 5.0;
+      }
+    }
+  };
+
+  // =========================================================================
+  // 5. COORDINATE MATH & COLLISION
+  // =========================================================================
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  function centerCamera() {
+    state.camera.x = Math.floor(canvas.width / 2);
+    state.camera.y = Math.floor(canvas.height / 2 - (GRID_SIZE * TILE_H * state.camera.zoom) / 2 + 40);
+  }
+
+  // Grid (gx, gy) -> Screen pixel (sx, sy) of tile's top-center
+  function gridToScreen(gx, gy) {
+    const z = state.camera.zoom;
+    const isoX = (gx - gy) * (TILE_W / 2);
+    const isoY = (gx + gy) * (TILE_H / 2);
+    return {
+      x: Math.floor(state.camera.x + isoX * z),
+      y: Math.floor(state.camera.y + isoY * z),
+    };
+  }
+
+  // Screen pixel (sx, sy) -> Grid (gx, gy)
+  function screenToGrid(sx, sy) {
+    const z = state.camera.zoom;
+    const rx = (sx - state.camera.x) / z;
+    const ry = (sy - state.camera.y) / z;
+    const gx = Math.floor((rx / (TILE_W / 2) + ry / (TILE_H / 2)) / 2);
+    const gy = Math.floor((ry / (TILE_H / 2) - rx / (TILE_W / 2)) / 2);
+    if (gx < 0 || gy < 0 || gx >= GRID_SIZE || gy >= GRID_SIZE) return null;
+    return { x: gx, y: gy };
+  }
+
+  function findObjectAt(gx, gy) {
+    return state.objects.find(o => {
+      const s = o.size || 1;
+      return gx >= o.x && gx < o.x + s && gy >= o.y && gy < o.y + s;
+    });
+  }
+
+  function canPlaceObject(gx, gy, size) {
+    if (gx < 0 || gy < 0 || gx + size > GRID_SIZE || gy + size > GRID_SIZE) return false;
+    for (let dx = 0; dx < size; dx++) {
+      for (let dy = 0; dy < size; dy++) {
+        if (findObjectAt(gx + dx, gy + dy)) return false;
+      }
+    }
+    return true;
+  }
+
+  // =========================================================================
+  // 6. UNDO / REDO & MUTATION
+  // =========================================================================
+  function captureSnapshot() {
+    return JSON.stringify({
+      terrain: state.terrain,
+      objects: state.objects,
+      nextObjId: state.nextObjId,
+    });
+  }
+
+  function pushUndo() {
+    state.undoStack.push(captureSnapshot());
+    if (state.undoStack.length > 60) state.undoStack.shift();
+    state.redoStack = [];
+    updateUndoButtons();
+  }
+
+  function restoreSnapshot(snapStr) {
+    const data = JSON.parse(snapStr);
+    state.terrain = data.terrain;
+    state.objects = data.objects;
+    state.nextObjId = data.nextObjId || 1;
+    state.inspectedObjId = null;
+    renderConfigPanel();
+    autoSave();
+  }
+
+  function undo() {
+    if (!state.undoStack.length) return;
+    state.redoStack.push(captureSnapshot());
+    restoreSnapshot(state.undoStack.pop());
+    updateUndoButtons();
+    audio.playClick(380);
+  }
+
+  function redo() {
+    if (!state.redoStack.length) return;
+    state.undoStack.push(captureSnapshot());
+    restoreSnapshot(state.redoStack.pop());
+    updateUndoButtons();
+    audio.playClick(460);
+  }
+
+  function updateUndoButtons() {
+    document.getElementById('btn-undo').disabled = state.undoStack.length === 0;
+    document.getElementById('btn-redo').disabled = state.redoStack.length === 0;
+  }
+
+  // =========================================================================
+  // 7. PARTICLES: SMOKE & 3-LEVEL REALISTIC SNOWFALL
+  // =========================================================================
+  const smokeParticles = [];
+  const snowflakes = [];
+
+  function initSnowflakes() {
+    snowflakes.length = 0;
+    for (let i = 0; i < 420; i++) {
+      snowflakes.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() < 0.25 ? 3 : (Math.random() < 0.6 ? 2 : 1), // pixel size
+        speed: 24 + Math.random() * 40,
+        drift: (Math.random() - 0.5) * 16,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function spawnSmoke(wx, wy) {
+    smokeParticles.push({
+      x: wx + (Math.random() - 0.5) * 3,
+      y: wy,
+      vy: -10 - Math.random() * 6,
+      vx: 3 + Math.random() * 4,
+      life: 0,
+      maxLife: 2.2 + Math.random() * 1.2,
+      size: 2,
+    });
+  }
+
+  // =========================================================================
+  // 8. RENDERING LOOP
+  // =========================================================================
+  let lastTime = performance.now();
+  let animClock = 0;
+  let smokeSpawnTimer = 0;
+
+  // Background stars
+  const stars = Array.from({ length: 90 }, () => ({
+    x: Math.random(),
+    y: Math.random() * 0.55,
+    phase: Math.random() * Math.PI * 2,
+    size: Math.random() < 0.2 ? 2 : 1,
+  }));
+
+  function renderFrame(now) {
+    const dt = Math.min(0.1, (now - lastTime) / 1000);
+    lastTime = now;
+    animClock += dt;
+
+    audio.updateAmbiance(dt);
+
+    // Snow accumulation when in snow mode
+    if (state.snowMode) {
+      const accumRates = { 1: 0.008, 2: 0.022, 3: 0.055 }; // per second
+      state.snowAccum = Math.min(1, state.snowAccum + accumRates[state.snowLevel] * dt);
+      const pct = Math.round(state.snowAccum * 100);
+      document.getElementById('snow-accum-pill').textContent = `Depth: ${pct}%`;
+      document.getElementById('accum-label').textContent = `${pct}%`;
+    }
+
+    const snowBucket = Math.min(4, Math.floor(state.snowAccum * 4.99));
+
+    // 1. Sky backdrop
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#070b14');
+    skyGrad.addColorStop(0.6, '#131d33');
+    skyGrad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Twinkling pixel stars
+    for (const s of stars) {
+      const alpha = 0.35 + 0.65 * Math.abs(Math.sin(animClock * 1.4 + s.phase));
+      ctx.fillStyle = `rgba(241, 245, 249, ${alpha.toFixed(2)})`;
+      ctx.fillRect(Math.floor(s.x * canvas.width), Math.floor(s.y * canvas.height), s.size, s.size);
+    }
+
+    // Pixel Moon
+    const mx = canvas.width - 110;
+    const my = 86;
+    ctx.fillStyle = 'rgba(254, 243, 199, 0.12)';
+    ctx.beginPath();
+    ctx.arc(mx, my, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fef3c7';
+    ctx.beginPath();
+    ctx.arc(mx, my, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0d1424';
+    ctx.beginPath();
+    ctx.arc(mx + 6, my - 4, 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    const z = state.camera.zoom;
+
+    // 2. Terrain Pass (painter's order: x+y)
+    for (let sum = 0; sum <= (GRID_SIZE - 1) * 2; sum++) {
+      for (let gx = 0; gx < GRID_SIZE; gx++) {
+        const gy = sum - gx;
+        if (gy < 0 || gy >= GRID_SIZE) continue;
+        const pos = gridToScreen(gx, gy);
+        // Frustum cull
+        if (pos.x + TILE_W * z < -64 || pos.x - TILE_W * z > canvas.width + 64 ||
+            pos.y + TILE_H * z < -64 || pos.y - TILE_H * z > canvas.height + 64) continue;
+
+        const spr = getTerrainSprite(state.terrain[gy][gx], gx, gy, snowBucket);
+        ctx.drawImage(spr, pos.x - (TILE_W * z) / 2, pos.y, TILE_W * z, TILE_H * z);
+      }
+    }
+
+    // Hover tile highlight (editor mode only)
+    if (!state.snowMode && state.hoverTile) {
+      const { x, y } = state.hoverTile;
+      const catItem = CATALOG_MAP[state.selectedItem];
+      const sz = (state.selectedTool === 'place' && catItem && catItem.size) ? catItem.size : 1;
+      for (let dx = 0; dx < sz; dx++) {
+        for (let dy = 0; dy < sz; dy++) {
+          const tx = x + dx, ty = y + dy;
+          if (tx < GRID_SIZE && ty < GRID_SIZE) {
+            const p = gridToScreen(tx, ty);
+            ctx.save();
+            ctx.translate(p.x, p.y + (TILE_H * z) / 2);
+            ctx.beginPath();
+            ctx.moveTo(0, -(TILE_H * z) / 2);
+            ctx.lineTo((TILE_W * z) / 2, 0);
+            ctx.lineTo(0, (TILE_H * z) / 2);
+            ctx.lineTo(-(TILE_W * z) / 2, 0);
+            ctx.closePath();
+            ctx.strokeStyle = state.selectedTool === 'erase' ? '#ef4444' : '#fbbf24';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = state.selectedTool === 'erase' ? 'rgba(239,68,68,0.22)' : 'rgba(251,191,36,0.22)';
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    // 3. Objects Pass (sorted by depth: (x + size - 1) + (y + size - 1))
+    const sortedObjects = [...state.objects].sort((a, b) => {
+      const da = (a.x + (a.size || 1) - 1) + (a.y + (a.size || 1) - 1);
+      const db = (b.x + (b.size || 1) - 1) + (b.y + (b.size || 1) - 1);
+      return da - db;
+    });
+
+    smokeSpawnTimer += dt;
+    const shouldSpawnSmoke = smokeSpawnTimer >= 0.35;
+    if (shouldSpawnSmoke) smokeSpawnTimer = 0;
+
+    for (const obj of sortedObjects) {
+      const s = obj.size || 1;
+      // Anchor at bottom-most tile of footprint
+      const anchor = gridToScreen(obj.x + s - 1, obj.y + s - 1);
+      const footCenterY = anchor.y + TILE_H * z;
+      const spr = getObjectSprite(obj, snowBucket);
+      const drawW = spr.width * z;
+      const drawH = spr.height * z;
+      const drawX = anchor.x - drawW / 2;
+      const drawY = footCenterY - drawH + 8 * z;
+
+      // Subtle living bob for carolers/skater/horse
+      let bobY = 0;
+      if (obj.type === 'carolers' || obj.type === 'skater') {
+        bobY = Math.round(Math.sin(animClock * 4 + obj.id) * 1) * z;
+      }
+
+      // Warm ambient light pool on ground for lampposts, bonfires, fireplaces
+      if (obj.type === 'lamppost' || obj.type === 'bonfire' || obj.fireplace) {
+        const glowR = (obj.type === 'lamppost' ? 38 : (obj.type === 'bonfire' ? 42 : 30)) * z;
+        const gyPos = footCenterY - (TILE_H * z) / 2;
+        const grad = ctx.createRadialGradient(anchor.x, gyPos, 2, anchor.x, gyPos, glowR);
+        const flicker = 0.22 + Math.sin(animClock * 9 + obj.id * 3) * 0.04;
+        grad.addColorStop(0, `rgba(253, 224, 71, ${flicker.toFixed(2)})`);
+        grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(anchor.x - glowR, gyPos - glowR, glowR * 2, glowR * 2);
+      }
+
+      ctx.drawImage(spr, drawX, drawY + bobY, drawW, drawH);
+
+      // Animated bonfire flames
+      if (obj.type === 'bonfire') {
+        const fx = anchor.x;
+        const fy = footCenterY - 11 * z;
+        const fH = (4 + Math.floor(Math.abs(Math.sin(animClock * 12 + obj.id)) * 4)) * z;
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(fx - 3 * z, fy - fH, 6 * z, fH);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(fx - 1 * z, fy - fH + 2 * z, 3 * z, fH - 2 * z);
+      }
+
+      // Christmas Lights overlay
+      if (obj.lights && obj.lights !== 'none') {
+        drawChristmasLights(ctx, obj, anchor.x, footCenterY, z);
+      }
+
+      // Chimney smoke
+      if (shouldSpawnSmoke && obj.fireplace && CATALOG_MAP[obj.type]?.hasFireplace) {
+        spawnSmoke(anchor.x + (obj.flip ? -6 : 6) * z, footCenterY - 40 * z);
+      }
+
+      // Selection ring if inspected
+      if (!state.snowMode && state.inspectedObjId === obj.id) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(drawX + 4, drawY + 4, drawW - 8, drawH - 8);
+      }
+    }
+
+    // 4. Smoke Particles
+    for (let i = smokeParticles.length - 1; i >= 0; i--) {
+      const p = smokeParticles[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        smokeParticles.splice(i, 1);
+        continue;
+      }
+      p.x += p.vx * dt * z * 0.5;
+      p.y += p.vy * dt * z * 0.5;
+      const alpha = (1 - p.life / p.maxLife) * 0.45;
+      const sz = Math.floor((p.size + p.life * 1.5) * z);
+      ctx.fillStyle = `rgba(226, 232, 240, ${alpha.toFixed(2)})`;
+      ctx.fillRect(Math.floor(p.x), Math.floor(p.y), sz, sz);
+    }
+
+    // 5. Realistic Multi-Layer Snowfall
+    if (state.snowMode) {
+      const activeCount = state.snowLevel === 1 ? 110 : (state.snowLevel === 2 ? 240 : 420);
+      const speedMult = state.snowLevel === 1 ? 0.65 : (state.snowLevel === 2 ? 1.15 : 2.1);
+      const windX = state.snowLevel === 3 ? 65 : (state.snowLevel === 2 ? 18 : 6);
+
+      ctx.fillStyle = '#f8fafc';
+      for (let i = 0; i < activeCount; i++) {
+        const f = snowflakes[i];
+        f.y += f.speed * speedMult * dt;
+        f.x += (windX + Math.sin(animClock * 1.6 + f.phase) * 14 + f.drift) * dt;
+
+        if (f.y > canvas.height) { f.y = -4; f.x = Math.random() * canvas.width; }
+        if (f.x > canvas.width) f.x = 0;
+        if (f.x < 0) f.x = canvas.width;
+
+        ctx.fillRect(Math.floor(f.x), Math.floor(f.y), f.r, f.r);
+      }
+    }
+
+    requestAnimationFrame(renderFrame);
+  }
+
+  function drawChristmasLights(ctx, obj, cx, footY, z) {
+    const paletteMap = {
+      warm:   ['#fef08a', '#fde047', '#fef9c3'],
+      multi:  ['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899'],
+      candy:  ['#ef4444', '#ffffff'],
+      icicle: ['#38bdf8', '#e0f2fe', '#7dd3fc'],
+    };
+    const cols = paletteMap[obj.lights] || paletteMap.warm;
+    const mode = obj.lightMode || 'twinkle';
+
+    // Define bulb offsets relative to (cx, footY) in 1x pixel space
+    let pts = [];
+    if (obj.type === 'pine' || obj.type === 'grandtree') {
+      const rows = obj.type === 'grandtree' ? 4 : 3;
+      for (let r = 0; r < rows; r++) {
+        const y = -14 - r * 9;
+        const w = 12 - r * 3;
+        for (let dx = -w; dx <= w; dx += 5) {
+          pts.push([dx, y - Math.abs(dx) * 0.2]);
+        }
+      }
+    } else if (obj.type === 'sleigh') {
+      for (let dx = -10; dx <= 10; dx += 5) pts.push([dx, -15]);
+    } else if (obj.type === 'townhall') {
+      for (let dx = -34; dx <= 34; dx += 7) pts.push([dx, -32 - (34 - Math.abs(dx)) * 0.35]);
+    } else {
+      // Standard building eaves
+      for (let dx = -18; dx <= 18; dx += 6) {
+        pts.push([dx, -22 - (18 - Math.abs(dx)) * 0.35]);
+      }
+    }
+
+    pts.forEach(([dx, dy], idx) => {
+      let on = true;
+      if (mode === 'twinkle') {
+        on = Math.sin(animClock * 5 + idx * 1.7 + obj.id) > -0.35;
+      } else if (mode === 'chase') {
+        on = (Math.floor(animClock * 6) + idx) % 3 !== 0;
+      }
+      if (!on) return;
+
+      const col = cols[(idx + obj.id) % cols.length];
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.floor(cx + dx * z), Math.floor(footY + dy * z), Math.max(2, z), Math.max(2, z));
+    });
+  }
+
+  // =========================================================================
+  // 9. INPUT HANDLING (Mouse, Drag, Pan, Zoom, Keyboard)
+  // =========================================================================
+  let isPanning = false;
+  let isPainting = false;
+  let panStart = { x: 0, y: 0, cx: 0, cy: 0 };
+  let spaceDown = false;
+  let paintUndoPushed = false;
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  canvas.addEventListener('mousedown', e => {
+    if (state.snowMode) return;
+
+    if (e.button === 1 || (e.button === 0 && spaceDown)) {
+      isPanning = true;
+      panStart = { x: e.clientX, y: e.clientY, cx: state.camera.x, cy: state.camera.y };
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+
+    const tile = screenToGrid(e.clientX, e.clientY);
+    if (!tile) return;
+
+    if (e.button === 2) {
+      isPainting = true;
+      paintUndoPushed = false;
+      eraseAt(tile.x, tile.y);
+      return;
+    }
+
+    if (e.button === 0) {
+      if (state.selectedTool === 'inspect') {
+        inspectAt(tile.x, tile.y);
+      } else if (state.selectedTool === 'erase') {
+        isPainting = true;
+        paintUndoPushed = false;
+        eraseAt(tile.x, tile.y);
+      } else {
+        isPainting = true;
+        paintUndoPushed = false;
+        placeAt(tile.x, tile.y);
+      }
+    }
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (isPanning) {
+      state.camera.x = Math.floor(panStart.cx + (e.clientX - panStart.x));
+      state.camera.y = Math.floor(panStart.cy + (e.clientY - panStart.y));
+      return;
+    }
+
+    const tile = screenToGrid(e.clientX, e.clientY);
+    state.hoverTile = tile;
+
+    if (isPainting && tile && !state.snowMode) {
+      if (e.buttons === 2 || state.selectedTool === 'erase') {
+        eraseAt(tile.x, tile.y);
+      } else if (state.selectedTool === 'place') {
+        const item = CATALOG_MAP[state.selectedItem];
+        // Allow continuous drag-painting for terrain only
+        if (item && item.type === 'terrain') {
+          placeAt(tile.x, tile.y);
+        }
+      }
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isPanning) {
+      isPanning = false;
+      canvas.style.cursor = spaceDown ? 'grab' : 'crosshair';
+    }
+    isPainting = false;
+    paintUndoPushed = false;
+  });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const dir = e.deltaY < 0 ? 1 : -1;
+    setZoom(state.camera.zoom + dir, e.clientX, e.clientY);
+  }, { passive: false });
+
+  function setZoom(newZoom, pivotX = canvas.width / 2, pivotY = canvas.height / 2) {
+    const clamped = Math.max(1, Math.min(4, newZoom));
+    if (clamped === state.camera.zoom) return;
+    const ratio = clamped / state.camera.zoom;
+    state.camera.x = Math.floor(pivotX - (pivotX - state.camera.x) * ratio);
+    state.camera.y = Math.floor(pivotY - (pivotY - state.camera.y) * ratio);
+    state.camera.zoom = clamped;
+    document.getElementById('zoom-label').textContent = `${clamped}x`;
+  }
+
+  function placeAt(gx, gy) {
+    const item = CATALOG_MAP[state.selectedItem];
+    if (!item) return;
+
+    if (item.type === 'terrain') {
+      if (state.terrain[gy][gx] === item.id) return;
+      if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
+      state.terrain[gy][gx] = item.id;
+      audio.playClick(420);
+      autoSave();
+      return;
+    }
+
+    const sz = item.size || 1;
+    if (!canPlaceObject(gx, gy, sz)) return;
+    pushUndo();
+    const newObj = {
+      id: state.nextObjId++,
+      type: item.id,
+      x: gx,
+      y: gy,
+      size: sz,
+      color: state.config.color,
+      lights: item.hasLights ? state.config.lights : 'none',
+      lightMode: state.config.lightMode,
+      fireplace: item.hasFireplace ? state.config.fireplace : false,
+      flip: item.hasFlip ? state.config.flip : false,
+      horseColor: item.hasHorseColor ? state.config.horseColor : 'white',
+    };
+    state.objects.push(newObj);
+    audio.playClick(580);
+    autoSave();
+  }
+
+  function eraseAt(gx, gy) {
+    const obj = findObjectAt(gx, gy);
+    if (obj) {
+      if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
+      state.objects = state.objects.filter(o => o.id !== obj.id);
+      if (state.inspectedObjId === obj.id) {
+        state.inspectedObjId = null;
+        renderConfigPanel();
+      }
+      audio.playClick(260);
+      autoSave();
+    } else if (state.terrain[gy][gx] !== 'snow') {
+      if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
+      state.terrain[gy][gx] = 'snow';
+      audio.playClick(300);
+      autoSave();
+    }
+  }
+
+  function inspectAt(gx, gy) {
+    const obj = findObjectAt(gx, gy);
+    state.inspectedObjId = obj ? obj.id : null;
+    if (obj) audio.playClick(640);
+    renderConfigPanel();
+  }
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.code === 'Space') {
+      spaceDown = true;
+      if (!isPanning) canvas.style.cursor = 'grab';
+      e.preventDefault();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redo(); else undo();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+    }
+    if (e.key.toLowerCase() === 'r') {
+      toggleFlip();
+    }
+    if (e.key === '1') setTool('place');
+    if (e.key === '2') setTool('inspect');
+    if (e.key === '3') setTool('erase');
+    if (e.key === 'Escape' && state.snowMode) exitSnowMode();
+  });
+
+  window.addEventListener('keyup', e => {
+    if (e.code === 'Space') {
+      spaceDown = false;
+      if (!isPanning) canvas.style.cursor = 'crosshair';
+    }
+  });
+
+  // =========================================================================
+  // 10. UI & CONFIGURATOR PANEL
+  // =========================================================================
+  function setTool(tool) {
+    state.selectedTool = tool;
+    if (tool !== 'inspect') state.inspectedObjId = null;
+    document.getElementById('tool-place').classList.toggle('active', tool === 'place');
+    document.getElementById('tool-inspect').classList.toggle('active', tool === 'inspect');
+    document.getElementById('tool-erase').classList.toggle('active', tool === 'erase');
+    renderConfigPanel();
+  }
+
+  function toggleFlip() {
+    if (state.inspectedObjId) {
+      const obj = state.objects.find(o => o.id === state.inspectedObjId);
+      if (obj && CATALOG_MAP[obj.type]?.hasFlip) {
+        pushUndo();
+        obj.flip = !obj.flip;
+        autoSave();
+      }
+    } else {
+      state.config.flip = !state.config.flip;
+    }
+    audio.playClick(500);
+    renderConfigPanel();
+  }
+
+  function renderPalette() {
+    const grid = document.getElementById('item-grid');
+    grid.innerHTML = '';
+    const items = CATALOG.filter(c => c.cat === state.selectedCat);
+    for (const item of items) {
+      const card = document.createElement('div');
+      card.className = 'item-card' + (state.selectedItem === item.id ? ' selected' : '');
+      const thumb = getItemThumbnail(item);
+      const preview = document.createElement('canvas');
+      preview.width = 48;
+      preview.height = 48;
+      const pctx = preview.getContext('2d');
+      pctx.imageSmoothingEnabled = false;
+      const scale = Math.min(44 / thumb.width, 44 / thumb.height);
+      const dw = thumb.width * scale;
+      const dh = thumb.height * scale;
+      pctx.drawImage(thumb, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+
+      const label = document.createElement('span');
+      label.textContent = item.name;
+      card.appendChild(preview);
+      card.appendChild(label);
+
+      card.addEventListener('click', () => {
+        state.selectedItem = item.id;
+        setTool('place');
+        renderPalette();
+        renderConfigPanel();
+        audio.playClick(540);
+      });
+      grid.appendChild(card);
+    }
+  }
+
+  function renderConfigPanel() {
+    const titleEl = document.getElementById('config-item-title');
+    const descEl = document.getElementById('config-item-desc');
+    const container = document.getElementById('config-options-container');
+    container.innerHTML = '';
+
+    let targetObj = null;
+    let itemMeta = CATALOG_MAP[state.selectedItem];
+
+    if (state.selectedTool === 'inspect') {
+      targetObj = state.objects.find(o => o.id === state.inspectedObjId);
+      if (!targetObj) {
+        titleEl.textContent = 'Inspect Mode';
+        descEl.textContent = 'Click any building or feature on the map to customize its options.';
+        return;
+      }
+      itemMeta = CATALOG_MAP[targetObj.type];
+      titleEl.textContent = `Editing: ${itemMeta.name}`;
+      descEl.textContent = `Tile (${targetObj.x}, ${targetObj.y}) — changes apply live.`;
+    } else {
+      titleEl.textContent = itemMeta ? itemMeta.name : 'Selected Item';
+      descEl.textContent = itemMeta ? itemMeta.desc : '';
+    }
+
+    if (!itemMeta) return;
+    const activeCfg = targetObj || state.config;
+
+    const mutate = (key, val) => {
+      if (targetObj) {
+        pushUndo();
+        targetObj[key] = val;
+        autoSave();
+      } else {
+        state.config[key] = val;
+      }
+      audio.playClick(520);
+      renderConfigPanel();
+    };
+
+    // Building Color Palette
+    if (itemMeta.hasColor) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `<label><span>Style / Color</span><span>${PALETTES[activeCfg.color]?.name || ''}</span></label>`;
+      const group = document.createElement('div');
+      group.className = 'chip-group';
+      for (const [k, pal] of Object.entries(PALETTES)) {
+        const dot = document.createElement('div');
+        dot.className = 'color-dot' + (activeCfg.color === k ? ' active' : '');
+        dot.style.background = pal.roof;
+        dot.title = pal.name;
+        dot.onclick = () => mutate('color', k);
+        group.appendChild(dot);
+      }
+      row.appendChild(group);
+      container.appendChild(row);
+    }
+
+    // Horse Color
+    if (itemMeta.hasHorseColor) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `<label>Coat Color</label>`;
+      const group = document.createElement('div');
+      group.className = 'chip-group';
+      for (const hc of HORSE_COLORS) {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (activeCfg.horseColor === hc.id ? ' active' : '');
+        chip.textContent = hc.name;
+        chip.onclick = () => mutate('horseColor', hc.id);
+        group.appendChild(chip);
+      }
+      row.appendChild(group);
+      container.appendChild(row);
+    }
+
+    // Christmas Light Arrangement
+    if (itemMeta.hasLights) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `<label>Christmas Lights</label>`;
+      const group = document.createElement('div');
+      group.className = 'chip-group';
+      for (const ls of LIGHT_STYLES) {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (activeCfg.lights === ls.id ? ' active' : '');
+        chip.textContent = ls.name;
+        chip.onclick = () => mutate('lights', ls.id);
+        group.appendChild(chip);
+      }
+      row.appendChild(group);
+      container.appendChild(row);
+
+      if (activeCfg.lights !== 'none') {
+        const mRow = document.createElement('div');
+        mRow.className = 'option-row';
+        mRow.innerHTML = `<label>Light Pattern</label>`;
+        const mGroup = document.createElement('div');
+        mGroup.className = 'chip-group';
+        for (const lm of LIGHT_MODES) {
+          const chip = document.createElement('div');
+          chip.className = 'chip' + (activeCfg.lightMode === lm.id ? ' active' : '');
+          chip.textContent = lm.name;
+          chip.onclick = () => mutate('lightMode', lm.id);
+          mGroup.appendChild(chip);
+        }
+        mRow.appendChild(mGroup);
+        container.appendChild(mRow);
+      }
+    }
+
+    // Fireplace Toggle
+    if (itemMeta.hasFireplace) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      const sw = document.createElement('div');
+      sw.className = 'toggle-switch';
+      sw.innerHTML = `<span>🔥 Fireplace & Chimney</span><div class="toggle-pill ${activeCfg.fireplace ? 'on' : ''}"></div>`;
+      sw.onclick = () => mutate('fireplace', !activeCfg.fireplace);
+      row.appendChild(sw);
+      container.appendChild(row);
+    }
+
+    // Orientation Toggle
+    if (itemMeta.hasFlip) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      const sw = document.createElement('div');
+      sw.className = 'toggle-switch';
+      sw.innerHTML = `<span>🔄 Facing</span><span style="color:var(--accent-gold);font-weight:600;">${activeCfg.flip ? 'Right' : 'Left'}</span>`;
+      sw.onclick = () => mutate('flip', !activeCfg.flip);
+      row.appendChild(sw);
+      container.appendChild(row);
+    }
+  }
+
+  // =========================================================================
+  // 11. SNOW MODE & GREETING BANNER
+  // =========================================================================
+  function enterSnowMode(showGreeting = false) {
+    state.snowMode = true;
+    document.getElementById('top-bar').classList.add('hidden-editor');
+    document.getElementById('left-palette').classList.add('hidden-editor');
+    document.getElementById('right-config').classList.add('hidden-editor');
+    document.getElementById('bottom-hint').classList.add('hidden-editor');
+    document.getElementById('snow-controls').classList.add('visible');
+    if (showGreeting) showGreetingBanner();
+  }
+
+  function exitSnowMode() {
+    state.snowMode = false;
+    document.getElementById('top-bar').classList.remove('hidden-editor');
+    document.getElementById('left-palette').classList.remove('hidden-editor');
+    document.getElementById('right-config').classList.remove('hidden-editor');
+    document.getElementById('bottom-hint').classList.remove('hidden-editor');
+    document.getElementById('snow-controls').classList.remove('visible');
+    document.getElementById('greeting-banner').classList.remove('visible');
+  }
+
+  function showGreetingBanner() {
+    document.getElementById('banner-title').textContent = state.greeting.title || "Season's Greetings!";
+    document.getElementById('banner-msg').textContent = state.greeting.message || '';
+    document.getElementById('banner-sig').textContent = state.greeting.signature || '';
+    document.getElementById('greeting-banner').classList.add('visible');
+  }
+
+  // =========================================================================
+  // 12. SAVE / LOAD (LOCALSTORAGE + JSON EXPORT/IMPORT + SAMPLE VILLAGE)
+  // =========================================================================
+  function serializeVillage() {
+    return {
+      version: 1,
+      terrain: state.terrain,
+      objects: state.objects,
+      nextObjId: state.nextObjId,
+      snowAccum: state.snowAccum,
+      greeting: state.greeting,
+      savedAt: new Date().toISOString(),
+    };
+  }
+
+  function loadVillageData(data, showBannerIfGreet = false) {
+    if (!data || !Array.isArray(data.terrain) || !Array.isArray(data.objects)) {
+      alert('Invalid village file format.');
+      return;
+    }
+    state.terrain = data.terrain;
+    state.objects = data.objects;
+    state.nextObjId = data.nextObjId || (data.objects.reduce((m, o) => Math.max(m, o.id), 0) + 1);
+    state.snowAccum = typeof data.snowAccum === 'number' ? data.snowAccum : 0;
+    if (data.greeting) state.greeting = data.greeting;
+    state.undoStack = [];
+    state.redoStack = [];
+    state.inspectedObjId = null;
+    updateUndoButtons();
+    renderConfigPanel();
+    autoSave();
+    if (showBannerIfGreet && state.greeting?.message) {
+      enterSnowMode(true);
+    }
+  }
+
+  function autoSave() {
+    try {
+      localStorage.setItem(STORAGE_AUTOSAVE, JSON.stringify(serializeVillage()));
+    } catch (_) {}
+  }
+
+  function getSavedSlots() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_SLOTS) || '[]');
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function renderSaveSlots() {
+    const list = document.getElementById('save-slots-list');
+    const slots = getSavedSlots();
+    list.innerHTML = '';
+    if (!slots.length) {
+      list.innerHTML = `<div style="color:var(--text-muted);font-size:11px;padding:6px;">No saved villages yet. Save one above!</div>`;
+      return;
+    }
+    slots.forEach((slot, idx) => {
+      const row = document.createElement('div');
+      row.className = 'slot-item';
+      const dateStr = new Date(slot.data.savedAt).toLocaleString();
+      row.innerHTML = `
+        <div class="slot-info">
+          <strong>${slot.name}</strong>
+          <small>${slot.data.objects.length} items • ${dateStr}</small>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button class="btn" data-load="${idx}">Load</button>
+          <button class="btn btn-danger" data-del="${idx}">✕</button>
+        </div>
+      `;
+      row.querySelector(`[data-load]`).onclick = () => {
+        pushUndo();
+        loadVillageData(slot.data, false);
+        closeModal('modal-saves');
+      };
+      row.querySelector(`[data-del]`).onclick = () => {
+        const updated = getSavedSlots().filter((_, i) => i !== idx);
+        localStorage.setItem(STORAGE_SLOTS, JSON.stringify(updated));
+        renderSaveSlots();
+      };
+      list.appendChild(row);
+    });
+  }
+
+  function buildSampleVillage() {
+    initEmptyMap();
+    // Main cobblestone cross-street & town square
+    for (let i = 6; i <= 25; i++) {
+      state.terrain[15][i] = 'road';
+      state.terrain[16][i] = 'road';
+      state.terrain[i][15] = 'road';
+      state.terrain[i][16] = 'road';
+    }
+    for (let x = 13; x <= 18; x++) {
+      for (let y = 13; y <= 18; y++) {
+        state.terrain[y][x] = 'plaza';
+      }
+    }
+    // Frozen pond
+    for (let x = 19; x <= 23; x++) {
+      for (let y = 19; y <= 22; y++) {
+        state.terrain[y][x] = 'ice';
+      }
+    }
+
+    let id = 1;
+    const add = (type, x, y, opts = {}) => {
+      const meta = CATALOG_MAP[type];
+      state.objects.push({
+        id: id++,
+        type, x, y,
+        size: meta.size || 1,
+        color: opts.color || 'red',
+        lights: opts.lights || 'warm',
+        lightMode: opts.lightMode || 'twinkle',
+        fireplace: opts.fireplace !== undefined ? opts.fireplace : !!meta.hasFireplace,
+        flip: !!opts.flip,
+        horseColor: opts.horseColor || 'white',
+      });
+    };
+
+    // Town Hall & Village Tree
+    add('townhall', 13, 11, { color: 'red', lights: 'warm' });
+    add('grandtree', 15, 15, { lights: 'multi', lightMode: 'twinkle' });
+    add('carolers', 14, 16);
+
+    // Cottages & Shops
+    add('bakery', 10, 14, { color: 'ginger', lights: 'candy' });
+    add('workshop', 18, 13, { color: 'green', lights: 'multi' });
+    add('cottage', 11, 18, { color: 'blue', lights: 'icicle' });
+    add('cottage', 18, 17, { color: 'red', lights: 'warm', flip: true });
+    add('cabin', 8, 18, { color: 'timber', lights: 'warm' });
+    add('chapel', 11, 10, { color: 'blue', lights: 'warm' });
+
+    // Streetlamps & Market Stalls
+    add('lamppost', 12, 14);
+    add('lamppost', 17, 14);
+    add('lamppost', 12, 17);
+    add('lamppost', 17, 17);
+    add('stall', 14, 14, { color: 'red', lights: 'warm' });
+    add('stall', 16, 14, { color: 'green', lights: 'multi' });
+
+    // Living & Winter Fun
+    add('skater', 20, 20);
+    add('skater', 22, 21, { flip: true });
+    add('sleigh', 15, 19, { lights: 'warm' });
+    add('reindeer', 16, 19);
+    add('horse', 9, 15, { horseColor: 'chestnut' });
+    add('snowman', 13, 17);
+    add('bonfire', 14, 17);
+
+    // Pine Forest Border
+    const trees = [
+      [7, 9], [9, 8], [14, 7], [18, 8], [22, 10], [24, 13],
+      [7, 21], [9, 23], [13, 24], [24, 18], [25, 22], [20, 11]
+    ];
+    trees.forEach(([x, y], i) => add('pine', x, y, { lights: i % 2 === 0 ? 'warm' : 'none' }));
+
+    state.nextObjId = id;
+    state.greeting = {
+      title: 'Welcome to Pinewood Hollow!',
+      message: 'Wishing you a cozy, bright, and joyful holiday season.',
+      signature: '— Christmas Village Editor',
+    };
+  }
+
+  // =========================================================================
+  // 13. MODAL & EVENT WIRING
+  // =========================================================================
+  window.openModal = id => document.getElementById(id).classList.add('open');
+  window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+  document.querySelectorAll('.cat-tab').forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.selectedCat = tab.dataset.cat;
+      const first = CATALOG.find(c => c.cat === state.selectedCat);
+      if (first) state.selectedItem = first.id;
+      setTool('place');
+      renderPalette();
+      renderConfigPanel();
+    };
+  });
+
+  document.getElementById('tool-place').onclick = () => setTool('place');
+  document.getElementById('tool-inspect').onclick = () => setTool('inspect');
+  document.getElementById('tool-erase').onclick = () => setTool('erase');
+  document.getElementById('btn-rotate').onclick = toggleFlip;
+  document.getElementById('btn-undo').onclick = undo;
+  document.getElementById('btn-redo').onclick = redo;
+  document.getElementById('btn-zoom-in').onclick = () => setZoom(state.camera.zoom + 1);
+  document.getElementById('btn-zoom-out').onclick = () => setZoom(state.camera.zoom - 1);
+  document.getElementById('btn-center-cam').onclick = centerCamera;
+  document.getElementById('btn-clear-snow').onclick = () => {
+    state.snowAccum = 0;
+    document.getElementById('accum-label').textContent = '0%';
+    document.getElementById('snow-accum-pill').textContent = 'Depth: 0%';
+  };
+
+  function toggleAudio() {
+    state.audioEnabled = !state.audioEnabled;
+    audio.setEnabled(state.audioEnabled);
+    document.getElementById('btn-audio').textContent = state.audioEnabled ? '🔊 Sound' : '🔇 Sound';
+    document.getElementById('btn-snow-audio').textContent = state.audioEnabled ? '🔊' : '🔇';
+  }
+  document.getElementById('btn-audio').onclick = toggleAudio;
+  document.getElementById('btn-snow-audio').onclick = toggleAudio;
+
+  // Snow Mode Buttons
+  document.getElementById('btn-snow-mode').onclick = () => enterSnowMode(false);
+  document.getElementById('btn-exit-snow').onclick = exitSnowMode;
+  document.getElementById('btn-snow-greeting').onclick = showGreetingBanner;
+  document.getElementById('btn-close-banner').onclick = () => {
+    document.getElementById('greeting-banner').classList.remove('visible');
+  };
+
+  document.querySelectorAll('.snow-lvl-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.snow-lvl-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.snowLevel = Number(btn.dataset.lvl);
+    };
+  });
+
+  // Saves Modal
+  document.getElementById('btn-saves').onclick = () => {
+    renderSaveSlots();
+    openModal('modal-saves');
+  };
+  document.getElementById('btn-save-slot').onclick = () => {
+    const input = document.getElementById('save-name-input');
+    const name = input.value.trim() || `Village ${new Date().toLocaleTimeString()}`;
+    const slots = getSavedSlots();
+    slots.unshift({ name, data: serializeVillage() });
+    localStorage.setItem(STORAGE_SLOTS, JSON.stringify(slots));
+    input.value = '';
+    renderSaveSlots();
+  };
+  document.getElementById('btn-load-sample').onclick = () => {
+    pushUndo();
+    buildSampleVillage();
+    autoSave();
+    renderConfigPanel();
+    closeModal('modal-saves');
+  };
+  document.getElementById('btn-new-village').onclick = () => {
+    if (!confirm('Clear the entire map and start a fresh village?')) return;
+    pushUndo();
+    initEmptyMap();
+    autoSave();
+    renderConfigPanel();
+    closeModal('modal-saves');
+  };
+
+  // Share & Greeting Modal
+  document.getElementById('btn-share').onclick = () => {
+    document.getElementById('greet-title').value = state.greeting.title || '';
+    document.getElementById('greet-msg').value = state.greeting.message || '';
+    document.getElementById('greet-sig').value = state.greeting.signature || '';
+    openModal('modal-share');
+  };
+
+  function syncGreetingFromInputs() {
+    state.greeting = {
+      title: document.getElementById('greet-title').value.trim() || "Season's Greetings!",
+      message: document.getElementById('greet-msg').value.trim(),
+      signature: document.getElementById('greet-sig').value.trim(),
+    };
+    autoSave();
+  }
+
+  document.getElementById('btn-export-json').onclick = () => {
+    syncGreetingFromInputs();
+    const blob = new Blob([JSON.stringify(serializeVillage(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'christmas-village.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  document.getElementById('btn-import-json-trigger').onclick = () => {
+    document.getElementById('import-json-file').click();
+  };
+
+  document.getElementById('import-json-file').onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        pushUndo();
+        loadVillageData(data, true);
+        closeModal('modal-share');
+      } catch (err) {
+        alert('Could not read JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  document.getElementById('btn-preview-greeting').onclick = () => {
+    syncGreetingFromInputs();
+    closeModal('modal-share');
+    enterSnowMode(true);
+  };
+
+  // =========================================================================
+  // 14. INITIALIZATION
+  // =========================================================================
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    initSnowflakes();
+  });
+
+  resizeCanvas();
+  initSnowflakes();
+
+  // Load autosave if available, otherwise load sample village so it looks cozy immediately
+  let loaded = false;
+  try {
+    const raw = localStorage.getItem(STORAGE_AUTOSAVE);
+    if (raw) {
+      loadVillageData(JSON.parse(raw), false);
+      loaded = true;
+    }
+  } catch (_) {}
+
+  if (!loaded) {
+    buildSampleVillage();
+    autoSave();
+  }
+
+  centerCamera();
+  renderPalette();
+  renderConfigPanel();
+  requestAnimationFrame(renderFrame);
+})();
+</script>
+</body>
+</html>
