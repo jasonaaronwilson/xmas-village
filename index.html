@@ -581,7 +581,7 @@
   const GRID_SIZE = 60;
   const TILE_W = 80;
   const TILE_H = 40;
-  const ELEV_STEP = 12;
+  const ELEV_STEP = 16;
   const SPRITE_SS = 2; // 2x supersampled vector sprites for razor-sharp anti-aliasing
   const STORAGE_AUTOSAVE = 'xmas_village_autosave_v2';
   const STORAGE_SLOTS = 'xmas_village_slots_v1';
@@ -698,7 +698,7 @@
     initEmptyMap();
     const scale = elevScale === 0 ? 0.25 : (elevScale === 1 ? 1.0 : 1.65);
     const mid = GRID_SIZE / 2;
-    const lakeCenter = GRID_SIZE * 0.73;
+    const lakeCenter = GRID_SIZE * 0.70;
 
     for (let cy = 0; cy <= GRID_SIZE; cy++) {
       for (let cx = 0; cx <= GRID_SIZE; cx++) {
@@ -716,27 +716,29 @@
           // Mostly flat, gentle rim at the very back
           if (backDist < 0.18) h = (0.18 - backDist) * 5 * scale;
         } else if (preset === 'swiss') {
-          // Dramatic Swiss alpine peaks in the back + small cozy hills in front
-          if (backDist < 0.42) {
-            const t = (0.42 - backDist) / 0.42;
-            h = (t * t * 5.2 + Math.max(0, ridge * t * 1.6)) * scale;
+          // Dramatic ridged Swiss alpine peaks in the back + varied hills & knolls
+          const sharpPeak = (1 - Math.abs(Math.sin((cx - cy) * 0.23))) * 2.4 + Math.max(0, ridge) * 1.4;
+          const sideKnolls = Math.max(0, Math.sin(cx * 0.16 + 0.8) * Math.cos(cy * 0.15)) * 2.2;
+          if (backDist < 0.48) {
+            const t = (0.48 - backDist) / 0.48;
+            h = (t * t * 6.2 + sharpPeak * t * 1.35 + sideKnolls * 0.5) * scale;
           } else {
-            h = smallHill * 0.65 * scale;
+            h = (smallHill * 1.15 + sideKnolls * 0.85) * scale;
           }
         } else if (preset === 'foothills') {
-          const backRise = backDist < 0.32 ? ((0.32 - backDist) / 0.32) * 3.0 : 0;
-          h = (backRise + smallHill * 1.25 + Math.max(0, ridge * 0.4)) * scale;
+          const backRise = backDist < 0.36 ? ((0.36 - backDist) / 0.36) * 4.2 : 0;
+          h = (backRise + smallHill * 1.6 + Math.max(0, ridge * 0.7)) * scale;
         } else if (preset === 'lake') {
-          if (lakeDist < 0.42) {
+          if (lakeDist < 0.54) {
             h = 0;
           } else {
-            const bank = Math.min(1.2, (lakeDist - 0.42) * 2.8);
-            const backRise = backDist < 0.36 ? ((0.36 - backDist) / 0.36) * 4.4 : 0;
-            h = (bank * 0.55 + backRise + (backDist < 0.4 ? Math.max(0, ridge * 0.6) : 0)) * scale;
+            const bank = Math.min(2.0, (lakeDist - 0.54) * 3.2);
+            const backRise = backDist < 0.40 ? ((0.40 - backDist) / 0.40) * 5.6 : 0;
+            h = (bank * 0.65 + backRise + (backDist < 0.45 ? Math.max(0, ridge * 0.9) : 0)) * scale;
           }
         }
 
-        state.corners[cy][cx] = Math.max(0, Math.min(7.5, Math.round(h * 2) / 2));
+        state.corners[cy][cx] = Math.max(0, Math.min(12, Math.round(h * 2) / 2));
       }
     }
 
@@ -748,7 +750,7 @@
           const alongD = ((tx + ty) * 0.5 - lakeCenter) / mid;
           const shoreWobble = Math.sin(tx * 0.25) * 0.07 + Math.cos(ty * 0.29) * 0.06 + Math.sin((tx - ty) * 0.17) * 0.05;
           const lakeDist = Math.sqrt(alongW * alongW * 0.28 + alongD * alongD * 1.35) + shoreWobble;
-          if (lakeDist < 0.41) {
+          if (lakeDist < 0.53) {
             state.terrain[y][x] = 'ice';
           }
         }
@@ -858,14 +860,14 @@
         ctx.fill();
       }
     } else if (type === 'ice') {
-      const grad = ctx.createRadialGradient(cx - 6, cy - 4, 2, cx, cy, 42);
-      grad.addColorStop(0, '#bae6fd');
-      grad.addColorStop(0.55, '#38bdf8');
-      grad.addColorStop(1, '#0284c7');
-      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, grad, '#0369a1', 1);
+      const grad = ctx.createRadialGradient(cx - 4, cy - 2, 2, cx, cy, 46);
+      grad.addColorStop(0, '#7dd3fc');
+      grad.addColorStop(0.65, '#38bdf8');
+      grad.addColorStop(1, '#22a7e5');
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 0.8, TILE_H + 0.4, grad, 'rgba(186, 230, 253, 0.25)', 0.6);
       // Smooth specular ice shine
-      ctx.strokeStyle = 'rgba(240, 249, 255, 0.75)';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(240, 249, 255, 0.55)';
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(cx - 14, cy - 3);
       ctx.quadraticCurveTo(cx - 4, cy - 6, cx + 6, cy - 2);
@@ -1851,6 +1853,10 @@
           ctx.lineWidth = Math.max(0.8, 0.9 * z);
           ctx.stroke();
         }
+
+        if (tType === 'ice') {
+          drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z);
+        }
       }
     }
 
@@ -1996,6 +2002,68 @@
     requestAnimationFrame(renderFrame);
   }
 
+  function drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z) {
+    const isIce = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE && state.terrain[y][x] === 'ice';
+    const nLand = !isIce(gx, gy - 1);
+    const eLand = !isIce(gx + 1, gy);
+    const sLand = !isIce(gx, gy + 1);
+    const wLand = !isIce(gx - 1, gy);
+    if (!nLand && !eLand && !sLand && !wLand) return;
+
+    const cX = (pN.x + pE.x + pS.x + pW.x) * 0.25;
+    const cY = (pN.y + pE.y + pS.y + pW.y) * 0.25;
+    const mid = (a, b) => ({ x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5 });
+    const pull = (pt, amt) => ({ x: pt.x + (cX - pt.x) * amt, y: pt.y + (cY - pt.y) * amt });
+
+    const mNE = mid(pN, pE);
+    const mES = mid(pE, pS);
+    const mSW = mid(pS, pW);
+    const mWN = mid(pW, pN);
+
+    ctx.fillStyle = '#deecfb';
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = Math.max(1, 1.4 * z);
+
+    // Round off outer corners where two adjacent edges meet land
+    const roundCorner = (a, corner, b) => {
+      const ctrl = pull(corner, 0.55);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.lineTo(corner.x, corner.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.stroke();
+    };
+
+    if (wLand && nLand) roundCorner(mWN, pN, mNE);
+    if (nLand && eLand) roundCorner(mNE, pE, mES);
+    if (eLand && sLand) roundCorner(mES, pS, mSW);
+    if (sLand && wLand) roundCorner(mSW, pW, mWN);
+
+    // Soft curved snowbank lips along straight edges
+    const drawEdgeLip = (a, b) => {
+      const ctrl = pull(mid(a, b), 0.28);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.stroke();
+    };
+
+    if (nLand) drawEdgeLip(pN, pE);
+    if (eLand) drawEdgeLip(pE, pS);
+    if (sLand) drawEdgeLip(pS, pW);
+    if (wLand) drawEdgeLip(pW, pN);
+  }
+
   function drawChristmasLights(ctx, obj, cx, footY, z) {
     const paletteMap = {
       warm:   ['#fef08a', '#fde047', '#fef9c3'],
@@ -2115,7 +2183,7 @@
       for (let dy = 0; dy <= 1; dy++) {
         for (let dx = 0; dx <= 1; dx++) {
           const cur = state.corners[gy + dy][gx + dx] || 0;
-          state.corners[gy + dy][gx + dx] = Math.max(0, Math.min(7.5, cur + item.delta * 0.75));
+          state.corners[gy + dy][gx + dx] = Math.max(0, Math.min(12, cur + item.delta * 0.75));
         }
       }
       audio.playClick(item.delta > 0 ? 520 : 340);
