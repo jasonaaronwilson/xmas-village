@@ -106,6 +106,8 @@
     snowAccum: 0,
     snowGrid: [],
     wind: { speed: 12, gust: 0 },
+    tourEnabled: true,
+    tour: { active: false, index: 0, timer: 0, stops: [], savedCam: null },
     greeting: {
       title: "Season's Greetings!",
       message: 'Welcome to our cozy Christmas village. Watch the snow fall and enjoy the warm holiday lights!',

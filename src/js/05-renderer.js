@@ -46,11 +46,48 @@
     size: 0.8 + Math.random() * 1.1,
   }));
 
+  function updateSnowTour(dt) {
+    if (!state.snowMode || !state.tour.active || !state.tour.stops.length) return;
+    const stop = state.tour.stops[state.tour.index];
+    const obj = stop.obj;
+    const s = obj.size || 1;
+    const gx = obj.x + (s - 1) * 0.5;
+    const gy = obj.y + (s - 1) * 0.5;
+    const elev = tileElev(obj.x, obj.y);
+    const tz = Math.min(2.0, Math.max(1.35, state.tour.savedCam?.zoom || 1));
+
+    const isoX = (gx - gy) * (TILE_W / 2);
+    const isoY = (gx + gy) * (TILE_H / 2) - elev * ELEV_STEP;
+    const targetX = viewW / 2 - isoX * tz;
+    const targetY = viewH / 2 - isoY * tz + 18;
+
+    const ease = 1 - Math.exp(-1.15 * dt);
+    state.camera.zoom += (tz - state.camera.zoom) * ease;
+    state.camera.x += (targetX - state.camera.x) * ease;
+    state.camera.y += (targetY - state.camera.y) * ease;
+
+    state.tour.timer += dt;
+    const capEl = document.getElementById('tour-caption');
+    if (state.tour.timer >= 1.2 && state.tour.timer < 6.0) {
+      document.getElementById('tour-caption-title').textContent = stop.title;
+      document.getElementById('tour-caption-desc').textContent = stop.desc;
+      capEl.classList.add('visible');
+    } else {
+      capEl.classList.remove('visible');
+    }
+
+    if (state.tour.timer >= 6.8) {
+      state.tour.timer = 0;
+      state.tour.index = (state.tour.index + 1) % state.tour.stops.length;
+    }
+  }
+
   function renderFrame(now) {
     const dt = Math.min(0.1, (now - lastTime) / 1000);
     lastTime = now;
     animClock += dt;
     audio.updateAmbiance(dt);
+    updateSnowTour(dt);
 
     // Dynamic gusting wind simulation
     const baseWind = state.snowMode ? (state.snowLevel === 1 ? 14 : (state.snowLevel === 2 ? 48 : 125)) : 8;
@@ -374,6 +411,26 @@
         ctx.beginPath();
         ctx.roundRect(drawX + 4, drawY + 4, drawW - 8, drawH - 8, 6);
         ctx.stroke();
+      }
+
+      if (!state.snowMode && obj.label && (z >= 0.75 || state.inspectedObjId === obj.id)) {
+        ctx.save();
+        ctx.font = '600 11px Segoe UI, system-ui, sans-serif';
+        const tw = ctx.measureText(obj.label).width;
+        const px = anchor.x - tw / 2 - 6;
+        const py = drawY - 14;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.65)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(px, py, tw + 12, 18, 5);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#fde68a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obj.label, anchor.x, py + 9.5);
+        ctx.restore();
       }
     }
 

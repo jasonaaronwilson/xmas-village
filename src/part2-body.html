@@ -91,6 +91,10 @@
     <button class="btn btn-snow snow-start-btn" data-lvl="3" style="justify-content:space-between;padding:8px 10px;">
       <span>🌬️ 3. Winter Blizzard</span><small style="color:#e0f2fe">Howling gusts</small>
     </button>
+    <div class="toggle-switch" id="toggle-tour-mode" title="Slowly pan & zoom to visit labeled landmarks">
+      <span>🎬 Tour Landmarks</span>
+      <div class="toggle-pill on" id="pill-tour-mode"></div>
+    </div>
     <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:6px;">
       <button class="btn" id="btn-dialog-clear-snow" style="width:100%;justify-content:center;padding:7px 10px;">🧹 Clear Snow</button>
     </div>
@@ -99,6 +103,12 @@
 
 <!-- Snow Mode Single Lower-Left Button -->
 <button id="btn-exit-snow" class="ui-panel btn" title="Return to Editor (Esc)">✏️ Editor</button>
+
+<!-- Snow Tour Landmark Caption -->
+<div id="tour-caption" class="ui-panel">
+  <h4 id="tour-caption-title"></h4>
+  <p id="tour-caption-desc"></p>
+</div>
 
 <!-- Greeting Banner -->
 <div id="greeting-banner" class="ui-panel">

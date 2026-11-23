@@ -321,6 +321,30 @@
   #greeting-banner p { margin: 0 0 8px 0; line-height: 1.45; color: #e2e8f0; white-space: pre-wrap; }
   #greeting-banner .sig { font-style: italic; color: #94a3b8; font-size: 12px; }
 
+  /* Snow Tour Landmark Caption */
+  #tour-caption {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%) translateY(14px);
+    max-width: 440px;
+    width: calc(100vw - 180px);
+    padding: 10px 18px;
+    text-align: center;
+    z-index: 23;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    background: rgba(15, 23, 42, 0.84);
+    border-color: rgba(251, 191, 36, 0.55);
+  }
+  #tour-caption.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  #tour-caption h4 { margin: 0 0 3px 0; color: var(--accent-gold); font-size: 14px; }
+  #tour-caption p { margin: 0; color: #e2e8f0; font-size: 12px; line-height: 1.35; }
+
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -470,6 +494,10 @@
     <button class="btn btn-snow snow-start-btn" data-lvl="3" style="justify-content:space-between;padding:8px 10px;">
       <span>🌬️ 3. Winter Blizzard</span><small style="color:#e0f2fe">Howling gusts</small>
     </button>
+    <div class="toggle-switch" id="toggle-tour-mode" title="Slowly pan & zoom to visit labeled landmarks">
+      <span>🎬 Tour Landmarks</span>
+      <div class="toggle-pill on" id="pill-tour-mode"></div>
+    </div>
     <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:6px;">
       <button class="btn" id="btn-dialog-clear-snow" style="width:100%;justify-content:center;padding:7px 10px;">🧹 Clear Snow</button>
     </div>
@@ -478,6 +506,12 @@
 
 <!-- Snow Mode Single Lower-Left Button -->
 <button id="btn-exit-snow" class="ui-panel btn" title="Return to Editor (Esc)">✏️ Editor</button>
+
+<!-- Snow Tour Landmark Caption -->
+<div id="tour-caption" class="ui-panel">
+  <h4 id="tour-caption-title"></h4>
+  <p id="tour-caption-desc"></p>
+</div>
 
 <!-- Greeting Banner -->
 <div id="greeting-banner" class="ui-panel">
@@ -705,6 +739,8 @@
     snowAccum: 0,
     snowGrid: [],
     wind: { speed: 12, gust: 0 },
+    tourEnabled: true,
+    tour: { active: false, index: 0, timer: 0, stops: [], savedCam: null },
     greeting: {
       title: "Season's Greetings!",
       message: 'Welcome to our cozy Christmas village. Watch the snow fall and enjoy the warm holiday lights!',
@@ -2025,11 +2061,48 @@
     size: 0.8 + Math.random() * 1.1,
   }));
 
+  function updateSnowTour(dt) {
+    if (!state.snowMode || !state.tour.active || !state.tour.stops.length) return;
+    const stop = state.tour.stops[state.tour.index];
+    const obj = stop.obj;
+    const s = obj.size || 1;
+    const gx = obj.x + (s - 1) * 0.5;
+    const gy = obj.y + (s - 1) * 0.5;
+    const elev = tileElev(obj.x, obj.y);
+    const tz = Math.min(2.0, Math.max(1.35, state.tour.savedCam?.zoom || 1));
+
+    const isoX = (gx - gy) * (TILE_W / 2);
+    const isoY = (gx + gy) * (TILE_H / 2) - elev * ELEV_STEP;
+    const targetX = viewW / 2 - isoX * tz;
+    const targetY = viewH / 2 - isoY * tz + 18;
+
+    const ease = 1 - Math.exp(-1.15 * dt);
+    state.camera.zoom += (tz - state.camera.zoom) * ease;
+    state.camera.x += (targetX - state.camera.x) * ease;
+    state.camera.y += (targetY - state.camera.y) * ease;
+
+    state.tour.timer += dt;
+    const capEl = document.getElementById('tour-caption');
+    if (state.tour.timer >= 1.2 && state.tour.timer < 6.0) {
+      document.getElementById('tour-caption-title').textContent = stop.title;
+      document.getElementById('tour-caption-desc').textContent = stop.desc;
+      capEl.classList.add('visible');
+    } else {
+      capEl.classList.remove('visible');
+    }
+
+    if (state.tour.timer >= 6.8) {
+      state.tour.timer = 0;
+      state.tour.index = (state.tour.index + 1) % state.tour.stops.length;
+    }
+  }
+
   function renderFrame(now) {
     const dt = Math.min(0.1, (now - lastTime) / 1000);
     lastTime = now;
     animClock += dt;
     audio.updateAmbiance(dt);
+    updateSnowTour(dt);
 
     // Dynamic gusting wind simulation
     const baseWind = state.snowMode ? (state.snowLevel === 1 ? 14 : (state.snowLevel === 2 ? 48 : 125)) : 8;
@@ -2353,6 +2426,26 @@
         ctx.beginPath();
         ctx.roundRect(drawX + 4, drawY + 4, drawW - 8, drawH - 8, 6);
         ctx.stroke();
+      }
+
+      if (!state.snowMode && obj.label && (z >= 0.75 || state.inspectedObjId === obj.id)) {
+        ctx.save();
+        ctx.font = '600 11px Segoe UI, system-ui, sans-serif';
+        const tw = ctx.measureText(obj.label).width;
+        const px = anchor.x - tw / 2 - 6;
+        const py = drawY - 14;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.65)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(px, py, tw + 12, 18, 5);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#fde68a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obj.label, anchor.x, py + 9.5);
+        ctx.restore();
       }
     }
 
@@ -2882,6 +2975,30 @@
       row.appendChild(sw);
       container.appendChild(row);
     }
+
+    if (targetObj) {
+      const lRow = document.createElement('div');
+      lRow.className = 'option-row';
+      lRow.innerHTML = `<label>🏷️ Landmark Label (for Snow Tour)</label>`;
+      const lInput = document.createElement('input');
+      lInput.type = 'text';
+      lInput.placeholder = `e.g. ${itemMeta.name}`;
+      lInput.value = targetObj.label || '';
+      lInput.oninput = () => { targetObj.label = lInput.value; autoSave(); };
+      lRow.appendChild(lInput);
+      container.appendChild(lRow);
+
+      const dRow = document.createElement('div');
+      dRow.className = 'option-row';
+      dRow.innerHTML = `<label>📝 Description</label>`;
+      const dInput = document.createElement('textarea');
+      dInput.rows = 2;
+      dInput.placeholder = 'A short cozy description...';
+      dInput.value = targetObj.note || '';
+      dInput.oninput = () => { targetObj.note = dInput.value; autoSave(); };
+      dRow.appendChild(dInput);
+      container.appendChild(dRow);
+    }
   }
 
   // =========================================================================
@@ -2892,11 +3009,31 @@
     closeAllDockDialogs();
     document.getElementById('left-dock').classList.add('hidden-editor');
     document.getElementById('btn-exit-snow').classList.add('visible');
+
+    state.tour.savedCam = { x: state.camera.x, y: state.camera.y, zoom: state.camera.zoom };
+    const labeled = state.objects.filter(o => (o.label && o.label.trim()) || (o.note && o.note.trim()));
+    state.tour.stops = labeled.map(o => ({
+      obj: o,
+      title: (o.label && o.label.trim()) || CATALOG_MAP[o.type]?.name || 'Landmark',
+      desc: (o.note && o.note.trim()) || '',
+    }));
+    state.tour.index = 0;
+    state.tour.timer = 0;
+    state.tour.active = state.tourEnabled && state.tour.stops.length > 0;
+
     if (showGreeting) showGreetingBanner();
   }
 
   function exitSnowMode() {
     state.snowMode = false;
+    state.tour.active = false;
+    document.getElementById('tour-caption').classList.remove('visible');
+    if (state.tour.savedCam) {
+      state.camera.x = state.tour.savedCam.x;
+      state.camera.y = state.tour.savedCam.y;
+      state.camera.zoom = state.tour.savedCam.zoom;
+      state.tour.savedCam = null;
+    }
     document.getElementById('left-dock').classList.remove('hidden-editor');
     document.getElementById('btn-exit-snow').classList.remove('visible');
     document.getElementById('greeting-banner').classList.remove('visible');
@@ -3032,19 +3169,21 @@
         fireplace: opts.fireplace !== undefined ? opts.fireplace : !!meta.hasFireplace,
         flip: !!opts.flip,
         horseColor: opts.horseColor || 'white',
+        label: opts.label || '',
+        note: opts.note || '',
       });
     };
 
-    add('townhall', mid - 3, mid - 5, { color: 'red', lights: 'warm' });
-    add('grandtree', mid - 1, mid - 1, { lights: 'multi', lightMode: 'twinkle' });
+    add('townhall', mid - 3, mid - 5, { color: 'red', lights: 'warm', label: 'Pinewood Town Hall', note: 'The heart of the village, chiming on the hour.' });
+    add('grandtree', mid - 1, mid - 1, { lights: 'multi', lightMode: 'twinkle', label: 'Town Square Tree', note: 'Gather round for carols and warm holiday cheer.' });
     add('carolers', mid - 2, mid);
 
-    add('bakery', mid - 6, mid - 2, { color: 'ginger', lights: 'candy' });
+    add('bakery', mid - 6, mid - 2, { color: 'ginger', lights: 'candy', label: "Mrs. Claus's Bakery", note: 'Fresh gingerbread & spiced hot cocoa served nightly!' });
     add('workshop', mid + 3, mid - 3, { color: 'green', lights: 'multi' });
     add('cottage', mid - 5, mid + 2, { color: 'blue', lights: 'icicle' });
     add('cottage', mid + 2, mid + 1, { color: 'red', lights: 'warm', flip: true });
     add('cabin', mid - 8, mid + 2, { color: 'timber', lights: 'warm' });
-    add('chapel', mid - 5, mid - 6, { color: 'blue', lights: 'warm' });
+    add('chapel', mid - 5, mid - 6, { color: 'blue', lights: 'warm', label: 'St. Nicholas Chapel', note: 'Candlelit midnight service beneath the stars.' });
 
     add('lamppost', mid - 4, mid - 2);
     add('lamppost', mid + 1, mid - 2);
@@ -3135,6 +3274,11 @@
 
   document.getElementById('btn-snow-mode').onclick = () => toggleDockDialog('dialog-snow');
   document.getElementById('close-snow-dialog').onclick = closeAllDockDialogs;
+  document.getElementById('toggle-tour-mode').onclick = () => {
+    state.tourEnabled = !state.tourEnabled;
+    document.getElementById('pill-tour-mode').classList.toggle('on', state.tourEnabled);
+    audio.playClick(500);
+  };
   document.querySelectorAll('.snow-start-btn').forEach(btn => {
     btn.onclick = () => {
       state.snowLevel = Number(btn.dataset.lvl);

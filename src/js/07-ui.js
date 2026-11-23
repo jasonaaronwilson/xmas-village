@@ -203,6 +203,30 @@
       row.appendChild(sw);
       container.appendChild(row);
     }
+
+    if (targetObj) {
+      const lRow = document.createElement('div');
+      lRow.className = 'option-row';
+      lRow.innerHTML = `<label>🏷️ Landmark Label (for Snow Tour)</label>`;
+      const lInput = document.createElement('input');
+      lInput.type = 'text';
+      lInput.placeholder = `e.g. ${itemMeta.name}`;
+      lInput.value = targetObj.label || '';
+      lInput.oninput = () => { targetObj.label = lInput.value; autoSave(); };
+      lRow.appendChild(lInput);
+      container.appendChild(lRow);
+
+      const dRow = document.createElement('div');
+      dRow.className = 'option-row';
+      dRow.innerHTML = `<label>📝 Description</label>`;
+      const dInput = document.createElement('textarea');
+      dInput.rows = 2;
+      dInput.placeholder = 'A short cozy description...';
+      dInput.value = targetObj.note || '';
+      dInput.oninput = () => { targetObj.note = dInput.value; autoSave(); };
+      dRow.appendChild(dInput);
+      container.appendChild(dRow);
+    }
   }
 
   // =========================================================================
@@ -213,11 +237,31 @@
     closeAllDockDialogs();
     document.getElementById('left-dock').classList.add('hidden-editor');
     document.getElementById('btn-exit-snow').classList.add('visible');
+
+    state.tour.savedCam = { x: state.camera.x, y: state.camera.y, zoom: state.camera.zoom };
+    const labeled = state.objects.filter(o => (o.label && o.label.trim()) || (o.note && o.note.trim()));
+    state.tour.stops = labeled.map(o => ({
+      obj: o,
+      title: (o.label && o.label.trim()) || CATALOG_MAP[o.type]?.name || 'Landmark',
+      desc: (o.note && o.note.trim()) || '',
+    }));
+    state.tour.index = 0;
+    state.tour.timer = 0;
+    state.tour.active = state.tourEnabled && state.tour.stops.length > 0;
+
     if (showGreeting) showGreetingBanner();
   }
 
   function exitSnowMode() {
     state.snowMode = false;
+    state.tour.active = false;
+    document.getElementById('tour-caption').classList.remove('visible');
+    if (state.tour.savedCam) {
+      state.camera.x = state.tour.savedCam.x;
+      state.camera.y = state.tour.savedCam.y;
+      state.camera.zoom = state.tour.savedCam.zoom;
+      state.tour.savedCam = null;
+    }
     document.getElementById('left-dock').classList.remove('hidden-editor');
     document.getElementById('btn-exit-snow').classList.remove('visible');
     document.getElementById('greeting-banner').classList.remove('visible');
@@ -353,19 +397,21 @@
         fireplace: opts.fireplace !== undefined ? opts.fireplace : !!meta.hasFireplace,
         flip: !!opts.flip,
         horseColor: opts.horseColor || 'white',
+        label: opts.label || '',
+        note: opts.note || '',
       });
     };
 
-    add('townhall', mid - 3, mid - 5, { color: 'red', lights: 'warm' });
-    add('grandtree', mid - 1, mid - 1, { lights: 'multi', lightMode: 'twinkle' });
+    add('townhall', mid - 3, mid - 5, { color: 'red', lights: 'warm', label: 'Pinewood Town Hall', note: 'The heart of the village, chiming on the hour.' });
+    add('grandtree', mid - 1, mid - 1, { lights: 'multi', lightMode: 'twinkle', label: 'Town Square Tree', note: 'Gather round for carols and warm holiday cheer.' });
     add('carolers', mid - 2, mid);
 
-    add('bakery', mid - 6, mid - 2, { color: 'ginger', lights: 'candy' });
+    add('bakery', mid - 6, mid - 2, { color: 'ginger', lights: 'candy', label: "Mrs. Claus's Bakery", note: 'Fresh gingerbread & spiced hot cocoa served nightly!' });
     add('workshop', mid + 3, mid - 3, { color: 'green', lights: 'multi' });
     add('cottage', mid - 5, mid + 2, { color: 'blue', lights: 'icicle' });
     add('cottage', mid + 2, mid + 1, { color: 'red', lights: 'warm', flip: true });
     add('cabin', mid - 8, mid + 2, { color: 'timber', lights: 'warm' });
-    add('chapel', mid - 5, mid - 6, { color: 'blue', lights: 'warm' });
+    add('chapel', mid - 5, mid - 6, { color: 'blue', lights: 'warm', label: 'St. Nicholas Chapel', note: 'Candlelit midnight service beneath the stars.' });
 
     add('lamppost', mid - 4, mid - 2);
     add('lamppost', mid + 1, mid - 2);
@@ -456,6 +502,11 @@
 
   document.getElementById('btn-snow-mode').onclick = () => toggleDockDialog('dialog-snow');
   document.getElementById('close-snow-dialog').onclick = closeAllDockDialogs;
+  document.getElementById('toggle-tour-mode').onclick = () => {
+    state.tourEnabled = !state.tourEnabled;
+    document.getElementById('pill-tour-mode').classList.toggle('on', state.tourEnabled);
+    audio.playClick(500);
+  };
   document.querySelectorAll('.snow-start-btn').forEach(btn => {
     btn.onclick = () => {
       state.snowLevel = Number(btn.dataset.lvl);
