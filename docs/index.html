@@ -1,0 +1,3056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cozy Christmas Village Editor</title>
+<style>
+  :root {
+    --bg-night: #080d1a;
+    --panel-bg: rgba(16, 23, 39, 0.94);
+    --panel-border: #3a4c6e;
+    --panel-highlight: #607ba8;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent-gold: #fbbf24;
+    --accent-red: #dc2626;
+    --accent-green: #16a34a;
+    --accent-ice: #38bdf8;
+    --font-ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-night);
+    color: var(--text-main);
+    font-family: var(--font-ui);
+    font-size: 13px;
+  }
+
+  #game-canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+  }
+
+  .ui-panel {
+    background: var(--panel-bg);
+    border: 1.5px solid var(--panel-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Single Slim Left-Edge Toolbar */
+  #left-dock {
+    position: fixed;
+    top: 8px;
+    left: 10px;
+    bottom: 8px;
+    width: 48px;
+    padding: 6px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2px, 0.45vh, 5px);
+    z-index: 30;
+    overflow: hidden;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+
+  #left-dock.hidden-editor {
+    transform: translateX(-80px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .dock-btn {
+    width: clamp(30px, 4.4vh, 38px);
+    height: clamp(22px, 4.2vh, 36px);
+    flex: 0 1 auto;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: rgba(30, 41, 59, 0.7);
+    color: var(--text-main);
+    font-size: clamp(13px, 2.1vh, 17px);
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  }
+
+  .dock-btn:hover { background: #2b3a55; border-color: var(--panel-highlight); }
+  .dock-btn:active { transform: scale(0.95); }
+  .dock-btn.active { background: #2563eb; border-color: #60a5fa; box-shadow: 0 0 10px rgba(37, 99, 235, 0.45); }
+  .dock-btn.dialog-open { border-color: var(--accent-gold); box-shadow: 0 0 0 1px var(--accent-gold); }
+  .dock-btn.btn-snow-dock { background: #0284c7; border-color: #38bdf8; }
+  .dock-btn.btn-snow-dock:hover { background: #0369a1; }
+  .dock-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .dock-sep {
+    width: 26px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    margin: clamp(1px, 0.2vh, 2px) 0;
+    flex-shrink: 0;
+  }
+
+  .dock-spacer { flex: 1 1 0; min-height: 2px; }
+
+  /* Floating Dialogs anchored beside the left toolbar */
+  .dock-dialog {
+    position: fixed;
+    top: 8px;
+    left: 68px;
+    width: 296px;
+    max-height: calc(100vh - 16px);
+    display: none;
+    flex-direction: column;
+    z-index: 28;
+    overflow: hidden;
+  }
+
+  .dock-dialog.open { display: flex; }
+  .dock-dialog.hidden-editor { display: none !important; }
+
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dialog-header h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    letter-spacing: 0.3px;
+  }
+
+  .dialog-body {
+    padding: 10px 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn {
+    background: #1e293b;
+    color: var(--text-main);
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  .btn:hover { background: #2b3a55; border-color: var(--panel-highlight); }
+  .btn.active { background: #2563eb; border-color: #60a5fa; color: #fff; }
+  .btn-gold { background: #b45309; border-color: #f59e0b; color: #fffbeb; }
+  .btn-gold:hover { background: #d97706; }
+  .btn-snow { background: #0284c7; border-color: #38bdf8; color: #f0f9ff; }
+  .btn-snow:hover { background: #0369a1; }
+  .btn-danger { background: #991b1b; border-color: #ef4444; }
+  .btn-danger:hover { background: #b91c1c; }
+
+  .cat-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 8px 10px 0 10px;
+  }
+
+  .cat-tab {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+  }
+
+  .cat-tab.active {
+    color: var(--accent-gold);
+    background: #1e293b;
+    border-color: var(--panel-border);
+  }
+
+  .item-grid {
+    padding: 10px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 7px;
+    align-content: start;
+  }
+
+  .item-card {
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid #2b3954;
+    border-radius: 7px;
+    padding: 7px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+  }
+
+  .item-card:hover { background: rgba(30, 41, 59, 0.95); border-color: var(--panel-highlight); }
+  .item-card.selected { background: rgba(37, 99, 235, 0.25); border-color: var(--accent-gold); box-shadow: 0 0 0 1px var(--accent-gold); }
+  .item-card canvas { width: 58px; height: 58px; }
+  .item-card span { font-size: 11px; text-align: center; line-height: 1.15; }
+
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 3px;
+  }
+
+  .option-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 4px; }
+  .option-row label { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+
+  .chip-group { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 5px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: var(--text-main);
+    cursor: pointer;
+  }
+  .chip.active { background: #2563eb; border-color: #60a5fa; color: #fff; }
+
+  .color-dot { width: 22px; height: 22px; border-radius: 5px; border: 2px solid #334155; cursor: pointer; }
+  .color-dot.active { border-color: var(--accent-gold); transform: scale(1.1); }
+
+  .toggle-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 5px;
+    padding: 6px 9px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .toggle-pill { width: 30px; height: 16px; background: #334155; border-radius: 999px; position: relative; transition: background 0.15s; }
+  .toggle-pill.on { background: var(--accent-green); }
+  .toggle-pill::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+    border-radius: 50%; background: #fff; transition: transform 0.15s;
+  }
+  .toggle-pill.on::after { transform: translateX(14px); }
+
+  /* Snow Mode Single Lower-Left Exit Button */
+  #btn-exit-snow {
+    position: fixed;
+    bottom: 14px;
+    left: 14px;
+    padding: 7px 12px;
+    z-index: 25;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(30px);
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  #btn-exit-snow.visible {
+    transform: translateY(0);
+    opacity: 0.72;
+    pointer-events: auto;
+  }
+  #btn-exit-snow.visible:hover {
+    opacity: 1;
+  }
+
+  /* Greeting Banner */
+  #greeting-banner {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    max-width: 520px;
+    width: calc(100vw - 40px);
+    padding: 16px 22px;
+    text-align: center;
+    z-index: 24;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    border-color: var(--accent-gold);
+    background: rgba(15, 23, 42, 0.9);
+  }
+  #greeting-banner.visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  #greeting-banner h2 { margin: 0 0 6px 0; color: var(--accent-gold); font-size: 18px; }
+  #greeting-banner p { margin: 0 0 8px 0; line-height: 1.45; color: #e2e8f0; white-space: pre-wrap; }
+  #greeting-banner .sig { font-style: italic; color: #94a3b8; font-size: 12px; }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 16, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    backdrop-filter: blur(3px);
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    width: 460px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px; }
+  .modal-header h3 { margin: 0; color: var(--accent-gold); font-size: 15px; }
+
+  input[type="text"], textarea {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    color: var(--text-main);
+    padding: 7px 9px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  input[type="text"]:focus, textarea:focus { outline: none; border-color: var(--accent-gold); }
+
+  .slot-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+  .slot-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0f172a;
+    border: 1px solid #2b3954;
+    border-radius: 5px;
+    padding: 7px 9px;
+    gap: 8px;
+  }
+  .slot-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+  .slot-info strong { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot-info small { font-size: 10px; color: var(--text-muted); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<canvas id="game-canvas"></canvas>
+
+<!-- Single Left-Edge Toolbar -->
+<div id="left-dock" class="ui-panel">
+  <button class="dock-btn" id="btn-dock-build" title="Build Palette (B)">🏠</button>
+  <button class="dock-btn" id="btn-dock-options" title="Customize Options & Atmosphere (O)">🎨</button>
+  <div class="dock-sep"></div>
+  <button class="dock-btn active" id="tool-place" title="Place / Paint (1)">🖌️</button>
+  <button class="dock-btn" id="tool-inspect" title="Inspect & Edit Existing Item (2)">🔍</button>
+  <button class="dock-btn" id="tool-erase" title="Erase / Bulldoze (3 or Right-Click)">🧹</button>
+  <button class="dock-btn" id="btn-rotate" title="Rotate Facing (R)">🔄</button>
+  <div class="dock-sep"></div>
+  <button class="dock-btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>↩️</button>
+  <button class="dock-btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>↪️</button>
+  <div class="dock-sep"></div>
+  <button class="dock-btn" id="btn-zoom-in" title="Zoom In (+)">➕</button>
+  <button class="dock-btn" id="btn-zoom-out" title="Zoom Out (-)">➖</button>
+  <div class="dock-spacer"></div>
+  <button class="dock-btn" id="btn-audio" title="Toggle Cozy Ambiance">🔇</button>
+  <button class="dock-btn" id="btn-saves" title="Saved Villages & Presets">💾</button>
+  <button class="dock-btn" id="btn-share" title="Share JSON & Customized Greeting">🎁</button>
+  <button class="dock-btn btn-snow-dock" id="btn-snow-mode" title="Hide Editor & Begin Snowfall">❄️</button>
+</div>
+
+<!-- Floating Dialog: Build Palette -->
+<div id="dialog-build" class="dock-dialog ui-panel">
+  <div class="dialog-header">
+    <h3>🏠 Build & Place</h3>
+    <button class="btn" id="close-build" style="padding:2px 7px;">✕</button>
+  </div>
+  <div class="cat-tabs" id="cat-tabs">
+    <div class="cat-tab active" data-cat="terrain">Terrain</div>
+    <div class="cat-tab" data-cat="buildings">Buildings</div>
+    <div class="cat-tab" data-cat="decor">Decor</div>
+    <div class="cat-tab" data-cat="living">Living</div>
+  </div>
+  <div class="item-grid" id="item-grid"></div>
+</div>
+
+<!-- Floating Dialog: Item Options & Atmosphere -->
+<div id="dialog-options" class="dock-dialog ui-panel">
+  <div class="dialog-header">
+    <h3 id="config-item-title">🎨 Customize</h3>
+    <button class="btn" id="close-options" style="padding:2px 7px;">✕</button>
+  </div>
+  <div class="dialog-body">
+    <div id="config-item-desc" style="font-size:11px;color:var(--text-muted);">
+      Select a tile or building to customize.
+    </div>
+    <div id="config-options-container"></div>
+    <div>
+      <div class="section-title">Map & Snow</div>
+      <div class="option-row">
+        <label>Snowfall Level</label>
+        <div class="chip-group">
+          <button class="chip snow-lvl-btn active" data-lvl="1">1. Flurries</button>
+          <button class="chip snow-lvl-btn" data-lvl="2">2. Steady</button>
+          <button class="chip snow-lvl-btn" data-lvl="3">3. Blizzard</button>
+        </div>
+      </div>
+      <div class="option-row">
+        <label><span>Snow Accumulation</span><span id="accum-label">0%</span></label>
+        <div style="display:flex;gap:6px;">
+          <button class="btn" id="btn-clear-snow" style="flex:1;justify-content:center;">Sweep Snow</button>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:4px;">
+        Pan: Middle-drag or Space+Drag • Zoom: Scroll • Erase: Right-click
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Dialog: Snowfall Rate Picker -->
+<div id="dialog-snow" class="dock-dialog ui-panel" style="top:auto;bottom:12px;width:236px;">
+  <div class="dialog-header">
+    <h3>❄️ Choose Snowfall Rate</h3>
+    <button class="btn" id="close-snow-dialog" style="padding:2px 7px;">✕</button>
+  </div>
+  <div class="dialog-body" style="gap:7px;">
+    <button class="btn snow-start-btn" data-lvl="1" style="justify-content:space-between;padding:8px 10px;">
+      <span>🌨️ 1. Gentle Flurries</span><small style="color:var(--text-muted)">Light breeze</small>
+    </button>
+    <button class="btn snow-start-btn" data-lvl="2" style="justify-content:space-between;padding:8px 10px;">
+      <span>❄️ 2. Steady Snowfall</span><small style="color:var(--text-muted)">Brisk wind</small>
+    </button>
+    <button class="btn btn-snow snow-start-btn" data-lvl="3" style="justify-content:space-between;padding:8px 10px;">
+      <span>🌬️ 3. Winter Blizzard</span><small style="color:#e0f2fe">Howling gusts</small>
+    </button>
+  </div>
+</div>
+
+<!-- Snow Mode Single Lower-Left Button -->
+<button id="btn-exit-snow" class="ui-panel btn" title="Return to Editor (Esc)">✏️ Editor</button>
+
+<!-- Greeting Banner -->
+<div id="greeting-banner" class="ui-panel">
+  <h2 id="banner-title">Season's Greetings!</h2>
+  <p id="banner-msg"></p>
+  <div class="sig" id="banner-sig"></div>
+  <div style="margin-top:10px;display:flex;justify-content:center;gap:8px;">
+    <button class="btn btn-snow" id="btn-close-banner">Admire Village</button>
+  </div>
+</div>
+
+<!-- Welcome / Initial Terrain Modal (comes up first) -->
+<div id="modal-welcome" class="modal-backdrop open">
+  <div class="modal ui-panel" style="width:500px;">
+    <div class="modal-header">
+      <h3>🏔️ Choose Your Village Terrain</h3>
+      <button class="btn" onclick="closeModal('modal-welcome')" title="Keep Current">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">
+      Pick a starting landscape for your Christmas village. You can also sculpt hills anytime under <strong>Build → Terrain</strong>.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button class="item-card" data-start-preset="victorian" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:var(--accent-gold);font-size:13px;">🎩 Victorian Flat</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Level winter plain with a subtle back rim — ideal for neat streets &amp; town squares.</span>
+      </button>
+      <button class="item-card" data-start-preset="swiss" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:var(--accent-ice);font-size:13px;">🏔️ Swiss Alpine</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Dramatic snow-capped peaks in the back sloping down to a cozy valley &amp; small hills.</span>
+      </button>
+      <button class="item-card" data-start-preset="foothills" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:#4ade80;font-size:13px;">🌲 Rolling Foothills</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Gentle sloped hills across the village with a rising winter ridge behind.</span>
+      </button>
+      <button class="item-card" data-start-preset="lake" style="padding:12px;align-items:flex-start;text-align:left;">
+        <strong style="color:#38bdf8;font-size:13px;">⛸️ Lakeside &amp; Peaks</strong>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Frozen lake in the front with sloped snowy banks and alpine peaks in the back.</span>
+      </button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">
+      <button class="btn" id="btn-welcome-sample">✨ Open Sample Village</button>
+      <button class="btn btn-gold" onclick="closeModal('modal-welcome')">Continue Current Map</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save / Load Modal -->
+<div id="modal-saves" class="modal-backdrop">
+  <div class="modal ui-panel">
+    <div class="modal-header">
+      <h3>💾 Saved Villages & Presets</h3>
+      <button class="btn" onclick="closeModal('modal-saves')">✕</button>
+    </div>
+    <div class="option-row">
+      <label>Save Current Village to Browser</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="save-name-input" placeholder="e.g. Pinewood Hollow" />
+        <button class="btn btn-gold" id="btn-save-slot">Save</button>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Your Browser Saves</div>
+      <div class="slot-list" id="save-slots-list"></div>
+    </div>
+    <div>
+      <div class="section-title">New Map — Initial Terrain & Elevation</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <select id="new-terrain-preset" style="flex:1.4;background:#0f172a;color:var(--text-main);border:1px solid var(--panel-border);border-radius:5px;padding:6px 8px;font-size:12px;">
+          <option value="victorian">🎩 Victorian Flat</option>
+          <option value="swiss" selected>🏔️ Swiss Alpine (Back Peaks)</option>
+          <option value="foothills">🌲 Rolling Foothills</option>
+          <option value="lake">⛸️ Lakeside &amp; Peaks</option>
+        </select>
+        <select id="new-terrain-elev" style="flex:1;background:#0f172a;color:var(--text-main);border:1px solid var(--panel-border);border-radius:5px;padding:6px 8px;font-size:12px;">
+          <option value="0">Flat (0)</option>
+          <option value="1" selected>Gentle</option>
+          <option value="2">Dramatic</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-snow" id="btn-generate-terrain" style="flex:1;justify-content:center;">🌄 Generate New Map</button>
+        <button class="btn" id="btn-load-sample">✨ Sample Village</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share & Greeting Modal -->
+<div id="modal-share" class="modal-backdrop">
+  <div class="modal ui-panel">
+    <div class="modal-header">
+      <h3>🎁 Share Village & Greeting</h3>
+      <button class="btn" onclick="closeModal('modal-share')">✕</button>
+    </div>
+    <div class="option-row">
+      <label>Greeting Title</label>
+      <input type="text" id="greet-title" placeholder="Merry Christmas & Happy Holidays!" />
+    </div>
+    <div class="option-row">
+      <label>Message for Friends & Family</label>
+      <textarea id="greet-msg" rows="3" placeholder="Wishing you warmth, joy, and cozy winter nights..."></textarea>
+    </div>
+    <div class="option-row">
+      <label>From / Signature</label>
+      <input type="text" id="greet-sig" placeholder="— The Wilson Family" />
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-gold" id="btn-export-json" style="flex:1;justify-content:center;">⬇️ Export Village (.json)</button>
+      <button class="btn btn-snow" id="btn-import-json-trigger" style="flex:1;justify-content:center;">⬆️ Import Village (.json)</button>
+      <input type="file" id="import-json-file" accept=".json,application/json" style="display:none" />
+    </div>
+    <button class="btn" id="btn-preview-greeting" style="justify-content:center;">💌 Preview Greeting in Snow Mode</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // =========================================================================
+  // 1. CONSTANTS & MAP CONFIGURATION (60x60 spacious design area)
+  // =========================================================================
+  const GRID_SIZE = 60;
+  const TILE_W = 80;
+  const TILE_H = 40;
+  const ELEV_STEP = 16;
+  const SPRITE_SS = 2; // 2x supersampled vector sprites for razor-sharp anti-aliasing
+  const STORAGE_AUTOSAVE = 'xmas_village_autosave_v2';
+  const STORAGE_SLOTS = 'xmas_village_slots_v1';
+
+  const PALETTES = {
+    red:    { wall: '#f6ede2', wallShade: '#dcc8b2', roof: '#a31d1d', roofShade: '#761414', trim: '#6b3a1e', shutter: '#166534', name: 'Festive Red' },
+    green:  { wall: '#f1f5f9', wallShade: '#cbd5e1', roof: '#166534', roofShade: '#0f4725', trim: '#5c3d28', shutter: '#991b1b', name: 'Pine Green' },
+    blue:   { wall: '#f8fafc', wallShade: '#cbd5e1', roof: '#1e3a8a', roofShade: '#15255a', trim: '#475569', shutter: '#1d4ed8', name: 'Winter Blue' },
+    timber: { wall: '#b87e4b', wallShade: '#8c5a30', roof: '#475569', roofShade: '#334155', trim: '#52321b', shutter: '#78350f', name: 'Warm Timber' },
+    ginger: { wall: '#a8673e', wallShade: '#7c4726', roof: '#7c2d12', roofShade: '#541c09', trim: '#fef3c7', shutter: '#dc2626', name: 'Gingerbread' },
+  };
+
+  const LIGHT_STYLES = [
+    { id: 'none', name: 'None' },
+    { id: 'warm', name: 'Warm White' },
+    { id: 'multi', name: 'Multicolor' },
+    { id: 'candy', name: 'Candy Cane' },
+    { id: 'icicle', name: 'Icicle Blue' },
+  ];
+
+  const LIGHT_MODES = [
+    { id: 'twinkle', name: 'Twinkle' },
+    { id: 'steady', name: 'Steady' },
+    { id: 'chase', name: 'Chase' },
+  ];
+
+  const HORSE_COLORS = [
+    { id: 'white', name: 'Snow White', body: '#f8fafc', shade: '#cbd5e1', mane: '#94a3b8' },
+    { id: 'chestnut', name: 'Chestnut', body: '#9a4412', shade: '#78350f', mane: '#451a03' },
+    { id: 'black', name: 'Midnight', body: '#334155', shade: '#1e293b', mane: '#0f172a' },
+  ];
+
+  const CATALOG = [
+    { id: 'grass',      cat: 'terrain',   name: 'Lush Meadow',      type: 'terrain', desc: 'Green grass meadow before the snow falls.' },
+    { id: 'shrub',      cat: 'terrain',   name: 'Grassy Shrubs',    type: 'terrain', desc: 'Meadow with cozy wild bushes & tufts.' },
+    { id: 'snow',       cat: 'terrain',   name: 'Snowy Meadow',     type: 'terrain', desc: 'Soft drifting winter snowfield.' },
+    { id: 'road',       cat: 'terrain',   name: 'Cobble Street',    type: 'terrain', desc: 'Rounded cobblestone street with snow curbs.' },
+    { id: 'path',       cat: 'terrain',   name: 'Footpath',         type: 'terrain', desc: 'Winding stone-dusted walkway.' },
+    { id: 'ice',        cat: 'terrain',   name: 'Frozen Pond',      type: 'terrain', desc: 'Smooth reflective winter ice.' },
+    { id: 'plaza',      cat: 'terrain',   name: 'Timber Plaza',     type: 'terrain', desc: 'Warm wooden town square decking.' },
+    { id: 'elev_up',    cat: 'terrain',   name: 'Raise Hill',       type: 'elev', delta: 1, desc: 'Raise terrain elevation by 1 level.' },
+    { id: 'elev_down',  cat: 'terrain',   name: 'Lower Ground',     type: 'elev', delta: -1, desc: 'Lower terrain elevation by 1 level.' },
+
+    { id: 'cottage',    cat: 'buildings', name: 'Cozy Cottage',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Storybook cottage with wreath, shutters & chimney.' },
+    { id: 'bakery',     cat: 'buildings', name: 'Cocoa Bakery',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Warm bakery with scalloped awning & glowing display.' },
+    { id: 'workshop',   cat: 'buildings', name: 'Toy Workshop',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Whimsical workshop with hanging sign & eaves.' },
+    { id: 'cabin',      cat: 'buildings', name: 'Log Cabin',        type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Rustic timber cabin with stone chimney.' },
+    { id: 'chapel',     cat: 'buildings', name: 'Steeple Chapel',   type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: false, hasFlip: true, desc: 'Quaint chapel with stained glass & bell spire.' },
+    { id: 'townhall',   cat: 'buildings', name: 'Grand Town Hall',  type: 'object', size: 2, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: false, desc: '2x2 centerpiece hall with illuminated clock tower.' },
+
+    { id: 'pine',       cat: 'decor',     name: 'Pine Tree',        type: 'object', size: 1, hasLights: true, desc: 'Lush snow-laden evergreen.' },
+    { id: 'grandtree',  cat: 'decor',     name: 'Village Tree',     type: 'object', size: 1, hasLights: true, desc: 'Grand decorated tree with glowing star.' },
+    { id: 'lamppost',   cat: 'decor',     name: 'Lamppost',         type: 'object', size: 1, desc: 'Ornate wrought-iron lantern with warm halo.' },
+    { id: 'snowman',    cat: 'decor',     name: 'Snowman',          type: 'object', size: 1, hasFlip: true, desc: 'Jolly snowman with knit scarf & top hat.' },
+    { id: 'stall',      cat: 'decor',     name: 'Market Stall',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFlip: true, desc: 'Festive booth with scalloped canopy & treats.' },
+    { id: 'bench',      cat: 'decor',     name: 'Park Bench',       type: 'object', size: 1, hasFlip: true, desc: 'Snow-dusted timber & iron bench.' },
+    { id: 'bonfire',    cat: 'decor',     name: 'Hearth Brazier',   type: 'object', size: 1, desc: 'Stone-ringed fire pit with dancing flames.' },
+
+    { id: 'sleigh',     cat: 'living',    name: "Santa's Sleigh",   type: 'object', size: 1, hasLights: true, hasFlip: true, desc: 'Curved crimson sleigh packed with gifts.' },
+    { id: 'horse',      cat: 'living',    name: 'Winter Horse',     type: 'object', size: 1, hasHorseColor: true, hasFlip: true, desc: 'Gentle horse with festive saddle blanket.' },
+    { id: 'carolers',   cat: 'living',    name: 'Carolers',         type: 'object', size: 1, desc: 'Trio of bundled-up singers with songbooks.' },
+    { id: 'skater',     cat: 'living',    name: 'Ice Skater',       type: 'object', size: 1, hasFlip: true, desc: 'Villager gliding in winter coat & scarf.' },
+    { id: 'reindeer',   cat: 'living',    name: 'Reindeer',         type: 'object', size: 1, hasFlip: true, desc: 'Whimsical reindeer with red jingle collar.' },
+  ];
+
+  const CATALOG_MAP = Object.fromEntries(CATALOG.map(c => [c.id, c]));
+
+  // =========================================================================
+  // 2. GAME STATE
+  // =========================================================================
+  const state = {
+    terrain: [],
+    corners: [],
+    objects: [],
+    selectedTool: 'place',
+    selectedCat: 'buildings',
+    selectedItem: 'cottage',
+    config: {
+      color: 'red',
+      lights: 'warm',
+      lightMode: 'twinkle',
+      fireplace: true,
+      flip: false,
+      horseColor: 'white',
+    },
+    inspectedObjId: null,
+    camera: { x: 0, y: 0, zoom: 1 },
+    hoverTile: null,
+    snowMode: false,
+    snowLevel: 1,
+    snowAccum: 0,
+    snowGrid: [],
+    wind: { speed: 12, gust: 0 },
+    greeting: {
+      title: "Season's Greetings!",
+      message: 'Welcome to our cozy Christmas village. Watch the snow fall and enjoy the warm holiday lights!',
+      signature: '— With warm wishes',
+    },
+    undoStack: [],
+    redoStack: [],
+    nextObjId: 1,
+    audioEnabled: false,
+  };
+
+  function initEmptyMap() {
+    state.terrain = Array.from({ length: GRID_SIZE }, () =>
+      Array.from({ length: GRID_SIZE }, () => (Math.random() < 0.18 ? 'shrub' : 'grass'))
+    );
+    state.corners = Array.from({ length: GRID_SIZE + 1 }, () =>
+      Array.from({ length: GRID_SIZE + 1 }, () => 0)
+    );
+    state.snowGrid = Array.from({ length: GRID_SIZE }, () =>
+      Array.from({ length: GRID_SIZE }, () => 0)
+    );
+    state.objects = [];
+    state.inspectedObjId = null;
+    state.snowAccum = 0;
+  }
+
+  function generateInitialTerrain(preset = 'victorian', elevScale = 1) {
+    initEmptyMap();
+    const scale = elevScale === 0 ? 0.25 : (elevScale === 1 ? 1.0 : 1.65);
+    const mid = GRID_SIZE / 2;
+    const seed = Math.random() * 10000;
+
+    // Seeded smooth 2D value noise + fractal Brownian motion for personalized landscapes
+    const vNoise = (x, y, s) => {
+      const ix = Math.floor(x), iy = Math.floor(y);
+      const fx = x - ix, fy = y - iy;
+      const ux = fx * fx * (3 - 2 * fx);
+      const uy = fy * fy * (3 - 2 * fy);
+      const h00 = hash2(ix, iy, s), h10 = hash2(ix + 1, iy, s);
+      const h01 = hash2(ix, iy + 1, s), h11 = hash2(ix + 1, iy + 1, s);
+      const nx0 = h00 + (h10 - h00) * ux;
+      const nx1 = h01 + (h11 - h01) * ux;
+      return nx0 + (nx1 - nx0) * uy;
+    };
+    const fbm = (x, y) => (
+      vNoise(x * 0.08, y * 0.08, seed) * 0.58 +
+      vNoise(x * 0.17, y * 0.17, seed + 19.3) * 0.28 +
+      vNoise(x * 0.34, y * 0.34, seed + 47.7) * 0.14
+    );
+
+    const WATER_LEVEL = 1.0;
+    const lakeCenter = GRID_SIZE * (0.67 + (Math.random() - 0.5) * 0.06);
+    const lakeShiftW = (Math.random() - 0.5) * 0.22;
+
+    for (let cy = 0; cy <= GRID_SIZE; cy++) {
+      for (let cx = 0; cx <= GRID_SIZE; cx++) {
+        const backDist = (cx + cy) / (GRID_SIZE * 2);
+        const n = fbm(cx, cy); // 0..1
+        const ridged = 1 - Math.abs(n * 2 - 1); // 0..1 sharp alpine ridges
+        let h = 0;
+
+        if (preset === 'victorian') {
+          const gentleBack = backDist < 0.22 ? ((0.22 - backDist) / 0.22) * (1.2 + n * 1.4) : 0;
+          h = (gentleBack + Math.max(0, n - 0.62) * 1.2) * scale;
+        } else if (preset === 'swiss') {
+          const backT = backDist < 0.50 ? (0.50 - backDist) / 0.50 : 0;
+          const peaks = backT * backT * 5.8 + ridged * backT * 4.5;
+          const villageHills = Math.max(0, n - 0.42) * 3.8;
+          h = (peaks + villageHills) * scale;
+        } else if (preset === 'foothills') {
+          const backRise = backDist < 0.38 ? ((0.38 - backDist) / 0.38) * (3.2 + ridged * 2.0) : 0;
+          h = (backRise + Math.max(0, n - 0.35) * 3.4) * scale;
+        } else if (preset === 'lake') {
+          const alongW = (cx - cy) / mid - lakeShiftW;
+          const alongD = ((cx + cy) * 0.5 - lakeCenter) / mid;
+          const basinDist = Math.sqrt(alongW * alongW * 0.26 + alongD * alongD * 1.25) + (n - 0.5) * 0.32;
+          const backRise = backDist < 0.42 ? ((0.42 - backDist) / 0.42) * (4.6 + ridged * 2.8) : 0;
+          const landH = 0.7 + backRise * scale + Math.max(0, n - 0.35) * 2.6 * scale;
+          // Carve a natural basin below WATER_LEVEL in the foreground
+          h = basinDist < 0.56 ? (basinDist / 0.56) * WATER_LEVEL * 0.92 : landH + (basinDist - 0.56) * 1.2;
+        }
+
+        state.corners[cy][cx] = Math.max(0, Math.min(12, Math.round(h * 2) / 2));
+      }
+    }
+
+    // Real water-level pass: water fills everything at or below WATER_LEVEL to one flat plane
+    if (preset === 'lake') {
+      for (let cy = 0; cy <= GRID_SIZE; cy++) {
+        for (let cx = 0; cx <= GRID_SIZE; cx++) {
+          if (state.corners[cy][cx] <= WATER_LEVEL) {
+            state.corners[cy][cx] = WATER_LEVEL;
+          }
+        }
+      }
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const c0 = state.corners[y][x];
+          const c1 = state.corners[y][x + 1];
+          const c2 = state.corners[y + 1][x + 1];
+          const c3 = state.corners[y + 1][x];
+          if (c0 <= WATER_LEVEL && c1 <= WATER_LEVEL && c2 <= WATER_LEVEL && c3 <= WATER_LEVEL) {
+            state.terrain[y][x] = 'ice';
+          }
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // 3. SEMI-REALISTIC WHIMSICAL VECTOR ART ENGINE (2x Supersampled Smooth Canvas2D)
+  // =========================================================================
+  const spriteCache = new Map();
+
+  function makeVectorCanvas(w, h) {
+    const c = document.createElement('canvas');
+    c.width = w * SPRITE_SS;
+    c.height = h * SPRITE_SS;
+    const ctx = c.getContext('2d');
+    ctx.scale(SPRITE_SS, SPRITE_SS);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    return { c, ctx };
+  }
+
+  function hash2(x, y, s = 0) {
+    const n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  function drawIsoDiamond(ctx, cx, cy, w, h, fill, stroke, lineWidth = 1) {
+    const hw = w / 2, hh = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - hh);
+    ctx.lineTo(cx + hw, cy);
+    ctx.lineTo(cx, cy + hh);
+    ctx.lineTo(cx - hw, cy);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.stroke(); }
+  }
+
+  // Vector Terrain Tiles
+  function getTerrainSprite(type, tx, ty, snowBucket) {
+    const variant = ((tx * 7 + ty * 13) & 3);
+    const key = `vt_${type}_${variant}_${snowBucket}`;
+    if (spriteCache.has(key)) return spriteCache.get(key);
+
+    const { c, ctx } = makeVectorCanvas(TILE_W, TILE_H);
+    const cx = TILE_W / 2, cy = TILE_H / 2;
+
+    if (type === 'grass' || type === 'shrub') {
+      const shades = [
+        ['#5c8f46', '#4a7a37'],
+        ['#53853f', '#426f30'],
+        ['#62964b', '#4e803a'],
+        ['#578a43', '#457433'],
+      ];
+      const [gTop, gBot] = shades[variant];
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, gTop);
+      grad.addColorStop(1, gBot);
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, grad, '#3f6a2e', 0.8);
+
+      // Subtle grass blade tufts
+      ctx.strokeStyle = 'rgba(134, 194, 98, 0.55)';
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 4; i++) {
+        const rx = cx + (hash2(i, variant, 3) - 0.5) * 34;
+        const ry = cy + (hash2(i, variant, 4) - 0.5) * 14;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.quadraticCurveTo(rx - 2, ry - 3, rx - 3, ry - 4);
+        ctx.moveTo(rx, ry);
+        ctx.quadraticCurveTo(rx + 2, ry - 3, rx + 3, ry - 3.5);
+        ctx.stroke();
+      }
+
+      if (type === 'shrub') {
+        const count = 2 + (variant % 2);
+        for (let b = 0; b < count; b++) {
+          const bx = cx + (hash2(b, variant, 7) - 0.5) * 26;
+          const by = cy + (hash2(b, variant, 8) - 0.5) * 10;
+          const r = 4.2 + hash2(b, variant, 9) * 2.4;
+          // Shadow
+          ctx.fillStyle = 'rgba(20, 45, 18, 0.35)';
+          ctx.beginPath(); ctx.ellipse(bx + 1, by + 1.5, r, r * 0.65, 0, 0, Math.PI * 2); ctx.fill();
+          // Bush clusters
+          ctx.fillStyle = '#2d5a27';
+          ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#3f7835';
+          ctx.beginPath(); ctx.arc(bx - r * 0.25, by - r * 0.2, r * 0.72, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#5a9c49';
+          ctx.beginPath(); ctx.arc(bx - r * 0.35, by - r * 0.35, r * 0.42, 0, Math.PI * 2); ctx.fill();
+          // Tiny autumn/holiday berries on some shrubs
+          if ((b + variant) % 2 === 0) {
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(bx + 1.5, by - 1, 0.9, 0, Math.PI * 2);
+            ctx.arc(bx - 1.5, by + 0.5, 0.9, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    } else if (type === 'snow') {
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, '#f3f8ff');
+      grad.addColorStop(0.55, '#deecfb');
+      grad.addColorStop(1, '#c4dcf4');
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, grad, '#b9d2ec', 0.8);
+
+      // Soft curved snowdrifts
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 3; i++) {
+        const rx = cx + (hash2(i, variant, 1) - 0.5) * 32;
+        const ry = cy + (hash2(i, variant, 2) - 0.5) * 14;
+        ctx.beginPath();
+        ctx.moveTo(rx - 8, ry);
+        ctx.quadraticCurveTo(rx, ry - 2.5, rx + 8, ry + 0.5);
+        ctx.stroke();
+      }
+    } else if (type === 'road') {
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, '#475569');
+      grad.addColorStop(1, '#334155');
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, grad, '#273244', 1);
+
+      // Rounded vector cobblestones
+      for (let py = 6; py < TILE_H - 6; py += 5.5) {
+        for (let px = 11; px < TILE_W - 11; px += 8) {
+          const ox = px + ((Math.round(py) % 2 === 0) ? 3.5 : 0);
+          if (Math.abs(ox - cx) / 35 + Math.abs(py - cy) / 17 < 0.85) {
+            const tone = hash2(ox, py, variant);
+            ctx.fillStyle = tone > 0.6 ? '#64748b' : (tone > 0.3 ? '#526075' : '#435066');
+            ctx.beginPath();
+            ctx.ellipse(ox, py, 3.2, 1.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+      // Soft snow banks along edges
+      ctx.fillStyle = 'rgba(241, 245, 249, 0.55)';
+      ctx.beginPath();
+      ctx.ellipse(cx - 14, 7, 7, 2.2, -0.45, 0, Math.PI * 2);
+      ctx.ellipse(cx + 14, TILE_H - 7, 7, 2.2, -0.45, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (type === 'path') {
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#dce9f7', '#bdd3ea', 0.8);
+      drawIsoDiamond(ctx, cx, cy, TILE_W - 20, TILE_H - 10, '#9aa8ba', '#7e8da1', 0.8);
+      for (let i = 0; i < 6; i++) {
+        const rx = cx + (hash2(i, variant, 5) - 0.5) * 30;
+        const ry = cy + (hash2(i, variant, 6) - 0.5) * 12;
+        ctx.fillStyle = i % 2 === 0 ? '#cbd5e1' : '#7b899c';
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, 2.2, 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (type === 'ice') {
+      const grad = ctx.createRadialGradient(cx - 4, cy - 2, 2, cx, cy, 46);
+      grad.addColorStop(0, '#7dd3fc');
+      grad.addColorStop(0.65, '#38bdf8');
+      grad.addColorStop(1, '#22a7e5');
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 0.8, TILE_H + 0.4, grad, 'rgba(186, 230, 253, 0.25)', 0.6);
+      // Smooth specular ice shine
+      ctx.strokeStyle = 'rgba(240, 249, 255, 0.55)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 14, cy - 3);
+      ctx.quadraticCurveTo(cx - 4, cy - 6, cx + 6, cy - 2);
+      ctx.moveTo(cx - 4, cy + 5);
+      ctx.quadraticCurveTo(cx + 8, cy + 2, cx + 16, cy + 5);
+      ctx.stroke();
+    } else if (type === 'plaza') {
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#78350f', '#451a03', 1);
+      ctx.save();
+      drawIsoDiamond(ctx, cx, cy, TILE_W - 2, TILE_H - 1, null, null);
+      ctx.clip();
+      for (let py = 3; py < TILE_H; py += 5) {
+        ctx.fillStyle = py % 10 === 0 ? '#92400e' : '#71320d';
+        ctx.fillRect(0, py, TILE_W, 4);
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.14)';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.moveTo(0, py + 0.5); ctx.lineTo(TILE_W, py + 0.5); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Soft vector snow accumulation overlay
+    if (snowBucket > 0) {
+      const alpha = snowBucket * 0.19;
+      ctx.fillStyle = `rgba(248, 250, 252, ${alpha.toFixed(2)})`;
+      drawIsoDiamond(ctx, cx, cy, TILE_W - 2, TILE_H - 1, ctx.fillStyle, null);
+      // Pillowy snow patches
+      ctx.fillStyle = `rgba(255, 255, 255, ${(snowBucket * 0.16).toFixed(2)})`;
+      for (let i = 0; i < snowBucket * 2; i++) {
+        const rx = cx + (hash2(i, variant, 12) - 0.5) * 42;
+        const ry = cy + (hash2(i, variant, 14) - 0.5) * 18;
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, 7, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    spriteCache.set(key, c);
+    return c;
+  }
+
+  function drawVectorBox(ctx, cx, by, hw, hd, h, leftCol, rightCol, topCol, outline = '#1e293b') {
+    const leftGrad = ctx.createLinearGradient(cx - hw, by - hd - h, cx, by);
+    leftGrad.addColorStop(0, leftCol);
+    leftGrad.addColorStop(1, leftCol);
+
+    ctx.fillStyle = leftGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, by - hd);
+    ctx.lineTo(cx, by);
+    ctx.lineTo(cx, by - h);
+    ctx.lineTo(cx - hw, by - hd - h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = rightCol;
+    ctx.beginPath();
+    ctx.moveTo(cx, by);
+    ctx.lineTo(cx + hw, by - hd);
+    ctx.lineTo(cx + hw, by - hd - h);
+    ctx.lineTo(cx, by - h);
+    ctx.closePath();
+    ctx.fill();
+
+    if (topCol) {
+      ctx.fillStyle = topCol;
+      ctx.beginPath();
+      ctx.moveTo(cx, by - h - hd * 2);
+      ctx.lineTo(cx + hw, by - hd - h);
+      ctx.lineTo(cx, by - h);
+      ctx.lineTo(cx - hw, by - hd - h);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, by - hd);
+    ctx.lineTo(cx, by);
+    ctx.lineTo(cx + hw, by - hd);
+    ctx.lineTo(cx + hw, by - hd - h);
+    ctx.moveTo(cx - hw, by - hd);
+    ctx.lineTo(cx - hw, by - hd - h);
+    ctx.stroke();
+  }
+
+  // Whimsical vector pitched roof with curved snowdrifts & tapered icicles
+  function drawVectorRoof(ctx, cx, by, hw, hd, wallH, roofH, roofCol, roofShade, snowThick) {
+    const base = by - wallH;
+    const ridgeY = base - hd - roofH;
+
+    // Left slope
+    const lGrad = ctx.createLinearGradient(cx - hw, ridgeY, cx, base);
+    lGrad.addColorStop(0, roofCol);
+    lGrad.addColorStop(1, roofShade);
+    ctx.fillStyle = lGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw - 3.5, base - hd + 1.5);
+    ctx.lineTo(cx, base + 2.5);
+    ctx.lineTo(cx + 2, ridgeY + 2);
+    ctx.lineTo(cx - hw + 5, ridgeY - hd / 2 + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right slope
+    ctx.fillStyle = roofShade;
+    ctx.beginPath();
+    ctx.moveTo(cx, base + 2.5);
+    ctx.lineTo(cx + hw + 3.5, base - hd + 1.5);
+    ctx.lineTo(cx + 2, ridgeY + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Pillowy curved snow blanket
+    const sGrad = ctx.createLinearGradient(cx - hw, ridgeY, cx, base);
+    sGrad.addColorStop(0, '#ffffff');
+    sGrad.addColorStop(1, '#e2e8f0');
+    ctx.fillStyle = sGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw - 3, base - hd);
+    ctx.quadraticCurveTo(cx - hw * 0.45, base - hd * 0.35 + 2, cx, base + 1);
+    ctx.lineTo(cx + 2, ridgeY + 2);
+    ctx.lineTo(cx - hw + 5, ridgeY - hd / 2 + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Soft snow overhang lip
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.6 + snowThick * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw - 2.5, base - hd + 0.5);
+    ctx.quadraticCurveTo(cx - hw * 0.45, base - hd * 0.35 + 2.5, cx, base + 1.5);
+    ctx.stroke();
+
+    // Tapered vector icicles
+    ctx.fillStyle = '#bae6fd';
+    for (let x = cx - hw + 3; x < cx + hw - 2; x += 6) {
+      const dropY = base - hd + (1 - Math.abs(x - cx) / hw) * hd + 1.5;
+      const len = 2.5 + ((Math.abs(Math.round(x)) * 3) % 3);
+      ctx.beginPath();
+      ctx.moveTo(x - 1.1, dropY);
+      ctx.lineTo(x + 1.1, dropY);
+      ctx.lineTo(x, dropY + len);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Crisp roof outline
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw - 3.5, base - hd + 1.5);
+    ctx.lineTo(cx, base + 2.5);
+    ctx.lineTo(cx + hw + 3.5, base - hd + 1.5);
+    ctx.lineTo(cx + 2, ridgeY + 2);
+    ctx.lineTo(cx - hw + 5, ridgeY - hd / 2 + 2);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  function drawVectorWindow(ctx, x, y, w, h, lit, shutterCol = null) {
+    if (shutterCol) {
+      ctx.fillStyle = shutterCol;
+      ctx.beginPath();
+      ctx.roundRect(x - 3.2, y, 2.5, h, 0.8);
+      ctx.roundRect(x + w + 0.7, y, 2.5, h, 0.8);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.roundRect(x - 1, y - 1, w + 2, h + 2, 1.5);
+    ctx.fill();
+
+    if (lit) {
+      const wg = ctx.createRadialGradient(x + w / 2, y + h / 2, 0.5, x + w / 2, y + h / 2, w);
+      wg.addColorStop(0, '#fef9c3');
+      wg.addColorStop(1, '#facc15');
+      ctx.fillStyle = wg;
+    } else {
+      ctx.fillStyle = '#334155';
+    }
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 1);
+    ctx.fill();
+
+    // Mullions
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    if (w >= 4) { ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h); }
+    if (h >= 4) { ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2); }
+    ctx.stroke();
+
+    // Pillowy snow sill
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(x - 1.5, y + h - 0.5, w + 3, 2.2, 1);
+    ctx.fill();
+  }
+
+  function drawVectorWreath(ctx, x, y) {
+    ctx.strokeStyle = '#15803d';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 2.3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(x, y + 2, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Vector Object Sprites
+  function getObjectSprite(obj, snowBucket) {
+    const key = `vo_${obj.type}_${obj.color}_${obj.fireplace ? 1 : 0}_${obj.flip ? 1 : 0}_${obj.horseColor || 'w'}_${snowBucket}`;
+    if (spriteCache.has(key)) return spriteCache.get(key);
+
+    const isBig = obj.size === 2;
+    const W = isBig ? 160 : 80;
+    const H = isBig ? 132 : 96;
+    const { c, ctx } = makeVectorCanvas(W, H);
+    const cx = W / 2;
+    const by = H - 10;
+    const pal = PALETTES[obj.color] || PALETTES.red;
+    const snowThick = snowBucket >= 2 ? 2 : (snowBucket === 1 ? 1 : 0);
+    const lit = !!obj.fireplace;
+
+    // Soft ground contact shadow
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(cx, by - (isBig ? 18 : 9), isBig ? 46 : 20, isBig ? 22 : 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (obj.type === 'cottage') {
+      drawVectorBox(ctx, cx, by, 24, 12, 22, pal.wall, pal.wallShade, null);
+      // Timber beams
+      ctx.strokeStyle = pal.trim;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 23, by - 34); ctx.lineTo(cx - 23, by - 12);
+      ctx.moveTo(cx, by - 22); ctx.lineTo(cx, by);
+      ctx.moveTo(cx + 23, by - 34); ctx.lineTo(cx + 23, by - 12);
+      ctx.stroke();
+      // Arched door
+      ctx.fillStyle = '#5c3a21';
+      ctx.beginPath();
+      ctx.roundRect(cx - 14, by - 18, 7.5, 13, [3.5, 3.5, 0, 0]);
+      ctx.fill();
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.arc(cx - 8.5, by - 11, 0.8, 0, Math.PI * 2); ctx.fill();
+      drawVectorWreath(ctx, cx - 10.2, by - 14);
+
+      drawVectorWindow(ctx, cx + 6, by - 19, 8, 7, lit, pal.shutter);
+      drawVectorWindow(ctx, cx - 20, by - 26, 5, 6, lit);
+      drawVectorRoof(ctx, cx, by, 24, 12, 22, 18, pal.roof, pal.roofShade, snowThick);
+
+      // Stone Chimney
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath(); ctx.roundRect(cx + 8, by - 53, 7, 16, 1); ctx.fill();
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(cx + 12, by - 53, 3, 16);
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx + 11.5, by - 53.5, 5, 1.8 + snowThick * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'bakery') {
+      drawVectorBox(ctx, cx, by, 26, 13, 26, pal.wall, pal.wallShade, null);
+      // Scalloped awning
+      for (let i = 0; i < 7; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#f8fafc';
+        ctx.beginPath();
+        ctx.roundRect(cx - 22 + i * 3, by - 19 + i * 1.4, 3.2, 5.5, [0, 0, 1.5, 1.5]);
+        ctx.fill();
+      }
+      drawVectorWindow(ctx, cx + 5, by - 18, 11, 9, true);
+      drawVectorWindow(ctx, cx + 6, by - 33, 7, 6, lit, pal.shutter);
+      drawVectorRoof(ctx, cx, by, 26, 13, 26, 17, pal.roof, pal.roofShade, snowThick);
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath(); ctx.roundRect(cx - 14, by - 55, 6, 14, 1); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx - 11, by - 55, 4.5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'workshop') {
+      drawVectorBox(ctx, cx, by, 26, 13, 24, pal.wall, pal.wallShade, null);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.roundRect(cx + 5, by - 28, 12, 6, 1.5); ctx.fill();
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath(); ctx.roundRect(cx + 6, by - 27, 10, 4, 1); ctx.fill();
+      drawVectorWindow(ctx, cx - 18, by - 21, 8, 7, lit, pal.shutter);
+      drawVectorWindow(ctx, cx + 7, by - 17, 8, 7, lit);
+      drawVectorRoof(ctx, cx, by, 26, 13, 24, 19, pal.roof, pal.roofShade, snowThick);
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath(); ctx.roundRect(cx - 10, by - 56, 7, 14, 1); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx - 6.5, by - 56, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'cabin') {
+      drawVectorBox(ctx, cx, by, 24, 12, 20, '#966136', '#6e4321', null);
+      ctx.strokeStyle = '#523015';
+      ctx.lineWidth = 1;
+      for (let y = 3; y < 20; y += 3.5) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 23, by - 12 - y);
+        ctx.lineTo(cx - 1, by - y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#451a03';
+      ctx.beginPath(); ctx.roundRect(cx - 13, by - 16, 7, 11, [3, 3, 0, 0]); ctx.fill();
+      drawVectorWreath(ctx, cx - 9.5, by - 12);
+      drawVectorWindow(ctx, cx + 6, by - 18, 7, 6, lit, '#166534');
+      drawVectorRoof(ctx, cx, by, 24, 12, 20, 16, '#475569', '#334155', snowThick);
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath(); ctx.roundRect(cx + 8, by - 49, 6, 15, 1); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx + 11, by - 49, 4.5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'chapel') {
+      drawVectorBox(ctx, cx, by, 22, 11, 24, pal.wall, pal.wallShade, null);
+      drawVectorRoof(ctx, cx, by, 22, 11, 24, 16, pal.roof, pal.roofShade, snowThick);
+      drawVectorBox(ctx, cx, by - 31, 9, 5, 19, pal.wall, pal.wallShade, null);
+      ctx.fillStyle = pal.roof;
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, by - 54);
+      ctx.lineTo(cx + 10, by - 54);
+      ctx.lineTo(cx, by - 77);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx, by - 84); ctx.lineTo(cx, by - 77);
+      ctx.moveTo(cx - 3, by - 81); ctx.lineTo(cx + 3, by - 81);
+      ctx.stroke();
+      drawVectorWindow(ctx, cx + 6, by - 19, 6, 11, true);
+      drawVectorWindow(ctx, cx - 12, by - 19, 6, 11, true);
+    }
+    else if (obj.type === 'townhall') {
+      drawVectorBox(ctx, cx, by, 52, 26, 34, pal.wall, pal.wallShade, null);
+      ctx.fillStyle = '#5c3a21';
+      ctx.beginPath(); ctx.roundRect(cx - 15, by - 20, 10, 15, [4, 4, 0, 0]); ctx.fill();
+      drawVectorWreath(ctx, cx - 10, by - 14);
+      for (let i = -38; i <= 32; i += 14) {
+        if (Math.abs(i) > 6) drawVectorWindow(ctx, cx + i, by - 28, 7, 9, lit, pal.shutter);
+      }
+      drawVectorRoof(ctx, cx, by, 52, 26, 34, 26, pal.roof, pal.roofShade, snowThick);
+      drawVectorBox(ctx, cx, by - 56, 12, 6, 26, pal.wall, pal.wallShade, null);
+      // Circular illuminated clock
+      ctx.fillStyle = '#fef3c7';
+      ctx.beginPath(); ctx.arc(cx + 6, by - 70, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + 6, by - 70); ctx.lineTo(cx + 6, by - 73); ctx.moveTo(cx + 6, by - 70); ctx.lineTo(cx + 8.5, by - 70); ctx.stroke();
+
+      ctx.fillStyle = pal.roof;
+      ctx.beginPath();
+      ctx.moveTo(cx - 13, by - 86); ctx.lineTo(cx + 13, by - 86); ctx.lineTo(cx, by - 107);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#1e293b'; ctx.stroke();
+    }
+    else if (obj.type === 'pine' || obj.type === 'grandtree') {
+      const tall = obj.type === 'grandtree';
+      ctx.fillStyle = '#5c3a21';
+      ctx.beginPath(); ctx.roundRect(cx - 3, by - 15, 6, 11, 1.5); ctx.fill();
+      const tiers = tall ? 4 : 3;
+      for (let t = 0; t < tiers; t++) {
+        const w = (tall ? 25 : 19) - t * 4;
+        const y0 = by - 13 - t * 11;
+        const h = 18;
+        const g = ctx.createLinearGradient(cx - w, y0 - h, cx + w, y0);
+        g.addColorStop(0, '#15803d');
+        g.addColorStop(1, '#0d3b20');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(cx - w, y0);
+        ctx.quadraticCurveTo(cx, y0 + 3, cx + w, y0);
+        ctx.quadraticCurveTo(cx + w * 0.45, y0 - h * 0.55, cx, y0 - h);
+        ctx.quadraticCurveTo(cx - w * 0.45, y0 - h * 0.55, cx - w, y0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#0a2e18'; ctx.lineWidth = 0.9; ctx.stroke();
+
+        // Curved snow tufts
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.ellipse(cx - w * 0.55, y0 - 1.5, 4.5, 1.8, -0.25, 0, Math.PI * 2);
+        ctx.ellipse(cx + w * 0.55, y0 - 1.5, 4.5, 1.8, 0.25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (tall) {
+        // Glowing 5-point vector star
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 === 0 ? 5 : 2.1;
+          const a = (i * Math.PI) / 5 - Math.PI / 2;
+          const sx = cx + Math.cos(a) * r, sy = (by - 66) + Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    else if (obj.type === 'lamppost') {
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath(); ctx.ellipse(cx, by - 7, 4.5, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(cx, by - 7); ctx.lineTo(cx, by - 45); ctx.stroke();
+      // Decorative scroll bracket
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(cx - 3, by - 42, 3, 0, Math.PI * 1.5); ctx.stroke();
+      // Lantern glass
+      const lg = ctx.createRadialGradient(cx, by - 49, 1, cx, by - 49, 6);
+      lg.addColorStop(0, '#fef9c3'); lg.addColorStop(1, '#facc15');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.roundRect(cx - 4, by - 53, 8, 8, 1.5); ctx.fill();
+      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1; ctx.stroke();
+      // Cap + snow
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.moveTo(cx - 5.5, by - 53); ctx.lineTo(cx + 5.5, by - 53); ctx.lineTo(cx, by - 58); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.ellipse(cx, by - 55.5, 4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    else if (obj.type === 'snowman') {
+      const drawSnowball = (x, y, r) => {
+        const sg = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+        sg.addColorStop(0, '#ffffff'); sg.addColorStop(1, '#cbd5e1');
+        ctx.fillStyle = sg;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 0.8; ctx.stroke();
+      };
+      drawSnowball(cx, by - 12, 8);
+      drawSnowball(cx, by - 23, 6);
+      drawSnowball(cx, by - 32, 4.5);
+      // Scarf
+      ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2.8;
+      ctx.beginPath(); ctx.moveTo(cx - 4.5, by - 27.5); ctx.quadraticCurveTo(cx, by - 26, cx + 4.5, by - 27.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + 3, by - 27); ctx.lineTo(cx + 5, by - 21); ctx.stroke();
+      // Top hat
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath(); ctx.ellipse(cx, by - 36, 6.5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(cx - 4, by - 44, 8, 8, 1); ctx.fill();
+      ctx.fillStyle = '#dc2626'; ctx.fillRect(cx - 4, by - 38.5, 8, 1.5);
+      // Carrot nose & eyes
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.arc(cx - 1.6, by - 33, 0.8, 0, Math.PI * 2); ctx.arc(cx + 1.6, by - 33, 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath(); ctx.moveTo(cx, by - 32); ctx.lineTo(cx + 5, by - 31); ctx.lineTo(cx, by - 30.2); ctx.closePath(); ctx.fill();
+    }
+    else if (obj.type === 'stall') {
+      drawVectorBox(ctx, cx, by, 17, 9, 11, '#92400e', '#78350f', '#b45309');
+      ctx.strokeStyle = '#5c3a21'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx - 14, by - 14); ctx.lineTo(cx - 14, by - 31); ctx.moveTo(cx + 14, by - 14); ctx.lineTo(cx + 14, by - 31); ctx.stroke();
+      for (let i = -17; i < 17; i += 4.25) {
+        ctx.fillStyle = (Math.round(i) % 2 === 0) ? pal.roof : '#f8fafc';
+        ctx.beginPath();
+        ctx.roundRect(cx + i, by - 34, 4.25, 6.5, [0, 0, 2, 2]);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.roundRect(cx - 17, by - 35, 34, 2.5, 1); ctx.fill();
+    }
+    else if (obj.type === 'bench') {
+      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx - 10, by - 5); ctx.lineTo(cx - 10, by - 12); ctx.moveTo(cx + 10, by - 5); ctx.lineTo(cx + 10, by - 12); ctx.stroke();
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath(); ctx.roundRect(cx - 12, by - 13, 24, 3.5, 1); ctx.roundRect(cx - 12, by - 20, 24, 5, 1.5); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.roundRect(cx - 12, by - 21, 24, 2, 1); ctx.fill();
+    }
+    else if (obj.type === 'bonfire') {
+      ctx.fillStyle = '#64748b';
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.ellipse(cx + Math.cos(a) * 8, by - 8 + Math.sin(a) * 3.5, 3.5, 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath(); ctx.roundRect(cx - 6, by - 12, 12, 3, 1.5); ctx.fill();
+    }
+    else if (obj.type === 'sleigh') {
+      // Curved golden runners
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 15, by - 7);
+      ctx.lineTo(cx + 11, by - 7);
+      ctx.quadraticCurveTo(cx + 17, by - 7, cx + 16, by - 13);
+      ctx.stroke();
+      // Glossy crimson sleigh body
+      const sg = ctx.createLinearGradient(cx - 14, by - 24, cx + 12, by - 9);
+      sg.addColorStop(0, '#ef4444'); sg.addColorStop(1, '#991b1b');
+      ctx.fillStyle = sg;
+      ctx.beginPath();
+      ctx.moveTo(cx - 14, by - 23);
+      ctx.quadraticCurveTo(cx - 6, by - 16, cx + 12, by - 17);
+      ctx.lineTo(cx + 10, by - 9);
+      ctx.lineTo(cx - 12, by - 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#fde047'; ctx.lineWidth = 1.2; ctx.stroke();
+      // Gift boxes
+      ctx.fillStyle = '#16a34a'; ctx.beginPath(); ctx.roundRect(cx - 8, by - 24, 8, 7, 1); ctx.fill();
+      ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.roundRect(cx + 1, by - 22, 6, 5, 1); ctx.fill();
+    }
+    else if (obj.type === 'horse') {
+      const hc = HORSE_COLORS.find(h => h.id === obj.horseColor) || HORSE_COLORS[0];
+      ctx.strokeStyle = hc.shade; ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 7, by - 14); ctx.lineTo(cx - 7, by - 6);
+      ctx.moveTo(cx - 3, by - 14); ctx.lineTo(cx - 3, by - 6);
+      ctx.moveTo(cx + 4, by - 14); ctx.lineTo(cx + 4, by - 6);
+      ctx.moveTo(cx + 8, by - 14); ctx.lineTo(cx + 8, by - 6);
+      ctx.stroke();
+      // Body & neck
+      ctx.fillStyle = hc.body;
+      ctx.beginPath(); ctx.ellipse(cx, by - 17, 10, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + 5, by - 19); ctx.quadraticCurveTo(cx + 9, by - 28, cx + 11, by - 31);
+      ctx.lineTo(cx + 15, by - 29); ctx.quadraticCurveTo(cx + 11, by - 23, cx + 9, by - 16);
+      ctx.closePath(); ctx.fill();
+      // Saddle blanket
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.roundRect(cx - 5, by - 22, 10, 6, 2); ctx.fill();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1; ctx.stroke();
+      // Mane & flowing tail
+      ctx.strokeStyle = hc.mane; ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(cx - 10, by - 18); ctx.quadraticCurveTo(cx - 14, by - 14, cx - 12, by - 9); ctx.stroke();
+    }
+    else if (obj.type === 'carolers') {
+      const coats = ['#dc2626', '#16a34a', '#2563eb'];
+      [-10, 0, 10].forEach((dx, i) => {
+        ctx.fillStyle = coats[i];
+        ctx.beginPath(); ctx.roundRect(cx + dx - 4, by - 19, 8, 12, [3, 3, 1, 1]); ctx.fill();
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath(); ctx.arc(cx + dx, by - 22.5, 2.8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.ellipse(cx + dx, by - 25, 3.2, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath(); ctx.roundRect(cx + dx - 1.5, by - 16, 4, 3.5, 0.6); ctx.fill();
+      });
+    }
+    else if (obj.type === 'skater') {
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(cx - 5, by - 5.5); ctx.lineTo(cx, by - 5.5); ctx.moveTo(cx + 1, by - 5.5); ctx.lineTo(cx + 6, by - 5.5); ctx.stroke();
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath(); ctx.roundRect(cx - 4.5, by - 18, 9, 11, [4, 4, 2, 2]); ctx.fill();
+      ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(cx - 4, by - 18); ctx.lineTo(cx + 4, by - 18); ctx.stroke();
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath(); ctx.arc(cx, by - 22, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.arc(cx, by - 24, 3.2, Math.PI, 0); ctx.fill();
+    }
+    else if (obj.type === 'reindeer') {
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, by - 14); ctx.lineTo(cx - 6, by - 6);
+      ctx.moveTo(cx + 6, by - 14); ctx.lineTo(cx + 6, by - 6);
+      ctx.stroke();
+      ctx.fillStyle = '#92400e';
+      ctx.beginPath(); ctx.ellipse(cx, by - 17, 8.5, 4.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(cx + 4, by - 28, 4.5, 11, 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + 9.5, by - 27.5, 4.2, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.arc(cx + 13.5, by - 27.5, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#d6d3d1'; ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(cx + 6, by - 29); ctx.lineTo(cx + 5, by - 35);
+      ctx.moveTo(cx + 5.5, by - 32); ctx.lineTo(cx + 8, by - 34);
+      ctx.stroke();
+    }
+
+    if (obj.flip) {
+      const flipped = makeVectorCanvas(W, H);
+      flipped.ctx.translate(W, 0);
+      flipped.ctx.scale(-1, 1);
+      flipped.ctx.drawImage(c, 0, 0, W, H);
+      spriteCache.set(key, flipped.c);
+      return flipped.c;
+    }
+
+    spriteCache.set(key, c);
+    return c;
+  }
+
+  function getItemThumbnail(catItem) {
+    if (catItem.type === 'terrain') return getTerrainSprite(catItem.id, 0, 0, 0);
+    if (catItem.type === 'elev') {
+      const key = `thumb_${catItem.id}`;
+      if (spriteCache.has(key)) return spriteCache.get(key);
+      const { c, ctx } = makeVectorCanvas(64, 56);
+      drawIsoDiamond(ctx, 32, 36, 48, 24, '#deecfb', '#64748b', 1.2);
+      ctx.fillStyle = catItem.delta > 0 ? '#22c55e' : '#38bdf8';
+      ctx.beginPath();
+      if (catItem.delta > 0) {
+        ctx.moveTo(32, 10); ctx.lineTo(42, 22); ctx.lineTo(36, 22); ctx.lineTo(36, 32);
+        ctx.lineTo(28, 32); ctx.lineTo(28, 22); ctx.lineTo(22, 22);
+      } else {
+        ctx.moveTo(32, 34); ctx.lineTo(42, 22); ctx.lineTo(36, 22); ctx.lineTo(36, 12);
+        ctx.lineTo(28, 12); ctx.lineTo(28, 22); ctx.lineTo(22, 22);
+      }
+      ctx.closePath(); ctx.fill();
+      spriteCache.set(key, c);
+      return c;
+    }
+    return getObjectSprite({
+      type: catItem.id, size: catItem.size || 1, color: 'red',
+      fireplace: true, flip: false, horseColor: 'white',
+    }, 0);
+  }
+
+  // =========================================================================
+  // 4. WEB AUDIO COZY AMBIANCE
+  // =========================================================================
+  const audio = {
+    ctx: null, master: null, windGain: null, fireGain: null, chimeTimer: 0,
+    init() {
+      if (this.ctx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.0;
+      this.master.connect(this.ctx.destination);
+
+      const bufSize = this.ctx.sampleRate * 2;
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < bufSize; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.997 * b0 + w * 0.029;
+        b1 = 0.985 * b1 + w * 0.032;
+        b2 = 0.950 * b2 + w * 0.048;
+        data[i] = (b0 + b1 + b2 + w * 0.05) * 0.4;
+      }
+
+      const windSrc = this.ctx.createBufferSource();
+      windSrc.buffer = buf; windSrc.loop = true;
+      const wf = this.ctx.createBiquadFilter();
+      wf.type = 'lowpass'; wf.frequency.value = 340;
+      this.windGain = this.ctx.createGain();
+      this.windGain.gain.value = 0.12;
+      windSrc.connect(wf); wf.connect(this.windGain); this.windGain.connect(this.master);
+      windSrc.start();
+
+      const fireSrc = this.ctx.createBufferSource();
+      fireSrc.buffer = buf; fireSrc.loop = true;
+      const ff = this.ctx.createBiquadFilter();
+      ff.type = 'bandpass'; ff.frequency.value = 1400; ff.Q.value = 1.8;
+      this.fireGain = this.ctx.createGain();
+      this.fireGain.gain.value = 0.0;
+      fireSrc.connect(ff); ff.connect(this.fireGain); this.fireGain.connect(this.master);
+      fireSrc.start();
+    },
+    setEnabled(on) {
+      if (on) this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      this.master.gain.setTargetAtTime(on ? 0.55 : 0.0, this.ctx.currentTime, 0.2);
+    },
+    playClick(freq = 520) {
+      if (!state.audioEnabled || !this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.6, this.ctx.currentTime + 0.06);
+      g.gain.setValueAtTime(0.08, this.ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.07);
+      osc.connect(g); g.connect(this.master);
+      osc.start(); osc.stop(this.ctx.currentTime + 0.08);
+    },
+    playChime() {
+      if (!state.audioEnabled || !this.ctx) return;
+      const notes = [523.25, 659.25, 783.99, 880.0, 987.77, 1174.66];
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(notes[Math.floor(Math.random() * notes.length)], this.ctx.currentTime);
+      g.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.04, this.ctx.currentTime + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0005, this.ctx.currentTime + 1.6);
+      osc.connect(g); g.connect(this.master);
+      osc.start(); osc.stop(this.ctx.currentTime + 1.7);
+    },
+    updateAmbiance(dt) {
+      if (!state.audioEnabled || !this.ctx) return;
+      this.windGain.gain.setTargetAtTime(state.snowMode ? (0.1 + state.snowLevel * 0.12) : 0.08, this.ctx.currentTime, 0.5);
+      const fireCount = state.objects.filter(o => o.fireplace || o.type === 'bonfire').length;
+      this.fireGain.gain.setTargetAtTime(Math.min(0.28, fireCount * 0.035), this.ctx.currentTime, 0.5);
+      this.chimeTimer -= dt;
+      if (this.chimeTimer <= 0) { this.playChime(); this.chimeTimer = 3.5 + Math.random() * 5.0; }
+    }
+  };
+
+  // =========================================================================
+  // 5. COORDINATE MATH & COLLISION (HiDPI Vector Canvas)
+  // =========================================================================
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+  let viewW = window.innerWidth;
+  let viewH = window.innerHeight;
+
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    viewW = window.innerWidth;
+    viewH = window.innerHeight;
+    canvas.width = Math.floor(viewW * dpr);
+    canvas.height = Math.floor(viewH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+  }
+
+  function centerCamera() {
+    state.camera.x = viewW / 2 + 24;
+    state.camera.y = viewH / 2 - (GRID_SIZE * TILE_H * state.camera.zoom) / 2;
+  }
+
+  function cornerScreen(cx, cy) {
+    const z = state.camera.zoom;
+    const h = state.corners[cy]?.[cx] || 0;
+    return {
+      x: state.camera.x + (cx - cy) * (TILE_W / 2) * z,
+      y: state.camera.y + (cx + cy) * (TILE_H / 2) * z - h * ELEV_STEP * z,
+    };
+  }
+
+  function tileElev(gx, gy) {
+    const n = state.corners[gy]?.[gx] || 0;
+    const e = state.corners[gy]?.[gx + 1] || 0;
+    const s = state.corners[gy + 1]?.[gx + 1] || 0;
+    const w = state.corners[gy + 1]?.[gx] || 0;
+    return (n + e + s + w) / 4;
+  }
+
+  function gridToScreen(gx, gy, elev = 0) {
+    const z = state.camera.zoom;
+    return {
+      x: state.camera.x + (gx - gy) * (TILE_W / 2) * z,
+      y: state.camera.y + (gx + gy) * (TILE_H / 2) * z - elev * ELEV_STEP * z,
+    };
+  }
+
+  function pointInQuad(px, py, p0, p1, p2, p3) {
+    const cross = (a, b) => (b.x - a.x) * (py - a.y) - (b.y - a.y) * (px - a.x);
+    return cross(p0, p1) >= 0 && cross(p1, p2) >= 0 && cross(p2, p3) >= 0 && cross(p3, p0) >= 0;
+  }
+
+  function screenToGrid(sx, sy) {
+    // Check in front-to-back order using true 4-corner sloped tile quads
+    for (let sum = (GRID_SIZE - 1) * 2; sum >= 0; sum--) {
+      for (let gx = 0; gx < GRID_SIZE; gx++) {
+        const gy = sum - gx;
+        if (gy < 0 || gy >= GRID_SIZE) continue;
+        const pN = cornerScreen(gx, gy);
+        const pE = cornerScreen(gx + 1, gy);
+        const pS = cornerScreen(gx + 1, gy + 1);
+        const pW = cornerScreen(gx, gy + 1);
+        if (pointInQuad(sx, sy, pN, pE, pS, pW)) return { x: gx, y: gy };
+      }
+    }
+    return null;
+  }
+
+  function findObjectAt(gx, gy) {
+    return state.objects.find(o => {
+      const s = o.size || 1;
+      return gx >= o.x && gx < o.x + s && gy >= o.y && gy < o.y + s;
+    });
+  }
+
+  function canPlaceObject(gx, gy, size) {
+    if (gx < 0 || gy < 0 || gx + size > GRID_SIZE || gy + size > GRID_SIZE) return false;
+    for (let dx = 0; dx < size; dx++) {
+      for (let dy = 0; dy < size; dy++) {
+        if (findObjectAt(gx + dx, gy + dy)) return false;
+      }
+    }
+    return true;
+  }
+
+  // =========================================================================
+  // 6. UNDO / REDO & MUTATION
+  // =========================================================================
+  function captureSnapshot() {
+    return JSON.stringify({ terrain: state.terrain, corners: state.corners, objects: state.objects, nextObjId: state.nextObjId });
+  }
+
+  function pushUndo() {
+    state.undoStack.push(captureSnapshot());
+    if (state.undoStack.length > 60) state.undoStack.shift();
+    state.redoStack = [];
+    updateUndoButtons();
+  }
+
+  function restoreSnapshot(snapStr) {
+    const data = JSON.parse(snapStr);
+    state.terrain = data.terrain;
+    state.corners = data.corners || Array.from({ length: GRID_SIZE + 1 }, () => Array.from({ length: GRID_SIZE + 1 }, () => 0));
+    state.objects = data.objects;
+    state.nextObjId = data.nextObjId || 1;
+    state.inspectedObjId = null;
+    renderConfigPanel();
+    autoSave();
+  }
+
+  function undo() {
+    if (!state.undoStack.length) return;
+    state.redoStack.push(captureSnapshot());
+    restoreSnapshot(state.undoStack.pop());
+    updateUndoButtons();
+    audio.playClick(380);
+  }
+
+  function redo() {
+    if (!state.redoStack.length) return;
+    state.undoStack.push(captureSnapshot());
+    restoreSnapshot(state.redoStack.pop());
+    updateUndoButtons();
+    audio.playClick(460);
+  }
+
+  function updateUndoButtons() {
+    document.getElementById('btn-undo').disabled = state.undoStack.length === 0;
+    document.getElementById('btn-redo').disabled = state.redoStack.length === 0;
+  }
+
+  // =========================================================================
+  // 7. PARTICLES & RENDERING LOOP
+  // =========================================================================
+  const smokeParticles = [];
+  const snowflakes = [];
+
+  function initSnowflakes() {
+    snowflakes.length = 0;
+    for (let i = 0; i < 520; i++) {
+      // Only a few (~16) large near-camera ambiance flakes; most are crisp mid/far snow
+      const layer = i < 16 ? 'near' : (i < 220 ? 'mid' : 'far');
+      snowflakes.push({
+        layer,
+        x: Math.random() * viewW,
+        y: Math.random() * viewH,
+        r: layer === 'near' ? (3.2 + Math.random() * 2.0) : (layer === 'mid' ? (1.4 + Math.random() * 1.1) : (0.8 + Math.random() * 0.7)),
+        speed: layer === 'near' ? (46 + Math.random() * 26) : (layer === 'mid' ? (28 + Math.random() * 22) : (16 + Math.random() * 14)),
+        windFactor: layer === 'near' ? 1.35 : (layer === 'mid' ? 1.0 : 0.65),
+        alpha: layer === 'near' ? 0.42 : (layer === 'mid' ? 0.88 : 0.62),
+        swirl: 8 + Math.random() * 16,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function spawnSmoke(wx, wy) {
+    smokeParticles.push({
+      x: wx + (Math.random() - 0.5) * 3,
+      y: wy,
+      vy: -11 - Math.random() * 6,
+      vx: 3.5 + Math.random() * 4,
+      life: 0,
+      maxLife: 2.3 + Math.random() * 1.2,
+      size: 2.6,
+    });
+  }
+
+  let lastTime = performance.now();
+  let animClock = 0;
+  let smokeSpawnTimer = 0;
+
+  const stars = Array.from({ length: 110 }, () => ({
+    x: Math.random(),
+    y: Math.random() * 0.55,
+    phase: Math.random() * Math.PI * 2,
+    size: 0.8 + Math.random() * 1.1,
+  }));
+
+  function renderFrame(now) {
+    const dt = Math.min(0.1, (now - lastTime) / 1000);
+    lastTime = now;
+    animClock += dt;
+    audio.updateAmbiance(dt);
+
+    // Dynamic gusting wind simulation
+    const baseWind = state.snowMode ? (state.snowLevel === 1 ? 14 : (state.snowLevel === 2 ? 48 : 125)) : 8;
+    const gustWave = Math.sin(animClock * 0.43) * 0.55 + Math.sin(animClock * 1.17) * 0.3 + Math.cos(animClock * 2.3) * 0.15;
+    state.wind.gust = Math.max(0, gustWave);
+    state.wind.speed = baseWind * (0.65 + 0.7 * Math.max(-0.2, gustWave));
+
+    if (state.snowMode) {
+      const accumRates = { 1: 0.007, 2: 0.020, 3: 0.048 };
+      const baseRate = accumRates[state.snowLevel] * dt;
+      // Collect heat sources (lit fireplaces, bonfires, lampposts)
+      const heatSources = state.objects.filter(o => o.fireplace || o.type === 'bonfire' || o.type === 'lamppost');
+      let sumSnow = 0;
+
+      for (let gy = 0; gy < GRID_SIZE; gy++) {
+        for (let gx = 0; gx < GRID_SIZE; gx++) {
+          const tType = state.terrain[gy][gx];
+          const n = state.corners[gy]?.[gx] || 0;
+          const s = state.corners[gy + 1]?.[gx + 1] || 0;
+          const e = state.corners[gy]?.[gx + 1] || 0;
+          const w = state.corners[gy + 1]?.[gx] || 0;
+          // Leeward pockets & sheltered slopes catch more drifting snow
+          const leeward = Math.max(0.55, Math.min(1.55, 1.0 + (n - s) * 0.18 + (w - e) * 0.12));
+          const typeFactor = tType === 'ice' ? 0.38 : (tType === 'road' ? 0.85 : 1.0);
+          let maxCap = 1.0;
+
+          // Warmth from hearths & lamps keeps a cozy melted/light-frost ring
+          for (const hs of heatSources) {
+            const d2 = (gx - hs.x) * (gx - hs.x) + (gy - hs.y) * (gy - hs.y);
+            if (d2 <= 3.2) {
+              maxCap = Math.min(maxCap, hs.type === 'bonfire' ? 0.25 : 0.45);
+              break;
+            }
+          }
+
+          const cur = state.snowGrid[gy]?.[gx] || 0;
+          const next = Math.min(maxCap, cur + baseRate * leeward * typeFactor);
+          if (state.snowGrid[gy]) state.snowGrid[gy][gx] = next;
+          sumSnow += next;
+        }
+      }
+      state.snowAccum = sumSnow / (GRID_SIZE * GRID_SIZE);
+      const pct = Math.round(state.snowAccum * 100);
+      document.getElementById('accum-label').textContent = `${pct}%`;
+    }
+
+    const snowBucket = Math.min(4, Math.floor(state.snowAccum * 4.99));
+
+    // Sky
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, viewH);
+    skyGrad.addColorStop(0, '#070b14');
+    skyGrad.addColorStop(0.6, '#131d33');
+    skyGrad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, viewW, viewH);
+
+    // Soft twinkling stars
+    for (const s of stars) {
+      const alpha = 0.3 + 0.7 * Math.abs(Math.sin(animClock * 1.4 + s.phase));
+      ctx.fillStyle = `rgba(241, 245, 249, ${alpha.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(s.x * viewW, s.y * viewH, s.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Moon
+    const mx = viewW - 96, my = 76;
+    const moonGlow = ctx.createRadialGradient(mx, my, 12, mx, my, 52);
+    moonGlow.addColorStop(0, 'rgba(254, 243, 199, 0.22)');
+    moonGlow.addColorStop(1, 'rgba(254, 243, 199, 0)');
+    ctx.fillStyle = moonGlow;
+    ctx.beginPath(); ctx.arc(mx, my, 52, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fef3c7';
+    ctx.beginPath(); ctx.arc(mx, my, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0d1424';
+    ctx.beginPath(); ctx.arc(mx + 6, my - 4, 15, 0, Math.PI * 2); ctx.fill();
+
+    const z = state.camera.zoom;
+
+    // Terrain (true 4-corner sloped isometric quads with angled line segments)
+    for (let sum = 0; sum <= (GRID_SIZE - 1) * 2; sum++) {
+      for (let gx = 0; gx < GRID_SIZE; gx++) {
+        const gy = sum - gx;
+        if (gy < 0 || gy >= GRID_SIZE) continue;
+        const n = state.corners[gy]?.[gx] || 0;
+        const e = state.corners[gy]?.[gx + 1] || 0;
+        const s = state.corners[gy + 1]?.[gx + 1] || 0;
+        const w = state.corners[gy + 1]?.[gx] || 0;
+
+        const pN = cornerScreen(gx, gy);
+        const pE = cornerScreen(gx + 1, gy);
+        const pS = cornerScreen(gx + 1, gy + 1);
+        const pW = cornerScreen(gx, gy + 1);
+
+        if (pE.x < -80 || pW.x > viewW + 80 || pS.y < -80 || pN.y > viewH + 80) continue;
+
+        const tType = state.terrain[gy][gx];
+        if (n === e && e === s && s === w) {
+          // Flat tile: use crisp cached vector sprite
+          const spr = getTerrainSprite(tType, gx, gy, snowBucket);
+          ctx.drawImage(spr, pN.x - (TILE_W * z) / 2, pN.y, TILE_W * z, TILE_H * z);
+        } else {
+          // Sloped tile: draw 4-corner sloped quad with angled edges & directional shading
+          const slopeLight = ((w - e) + (n - s)) * 0.5; // positive = sunlit, negative = shaded
+          const steep = Math.max(Math.abs(n - s), Math.abs(e - w));
+          let fillCol, strokeCol;
+
+          if (tType === 'ice') {
+            fillCol = slopeLight >= 0 ? '#7dd3fc' : '#0284c7';
+            strokeCol = '#0369a1';
+          } else if (tType === 'road') {
+            fillCol = slopeLight >= 0 ? '#5b6b82' : '#334155';
+            strokeCol = '#273244';
+          } else if (tType === 'plaza') {
+            fillCol = slopeLight >= 0 ? '#92400e' : '#6c320d';
+            strokeCol = '#451a03';
+          } else if (tType === 'path') {
+            fillCol = slopeLight >= 0 ? '#e2ecf7' : '#9aa8ba';
+            strokeCol = '#7e8da1';
+          } else if (tType === 'grass' || tType === 'shrub') {
+            const avgH = (n + e + s + w) * 0.25;
+            if (snowBucket >= 3 || avgH > 4.2) {
+              // High alpine peaks or heavy snowfall
+              if (steep > 1.4 && slopeLight < -0.4) {
+                fillCol = '#94a3b8'; strokeCol = '#64748b';
+              } else if (slopeLight > 0.35) {
+                fillCol = '#ffffff'; strokeCol = '#cbd5e1';
+              } else if (slopeLight < -0.25) {
+                fillCol = '#b8cde3'; strokeCol = '#8fa9c4';
+              } else {
+                fillCol = '#deecfb'; strokeCol = '#b4cde6';
+              }
+            } else {
+              // Lush green sloped hills (gradually frosted as snowBucket rises)
+              if (steep > 1.6 && slopeLight < -0.5) {
+                fillCol = '#64748b'; strokeCol = '#475569'; // rocky cliff face
+              } else if (slopeLight > 0.35) {
+                fillCol = snowBucket >= 1 ? '#8cb878' : '#6ea354';
+                strokeCol = '#4d7a38';
+              } else if (slopeLight < -0.25) {
+                fillCol = snowBucket >= 1 ? '#5e8554' : '#3d662d';
+                strokeCol = '#2d4d20';
+              } else {
+                fillCol = snowBucket >= 1 ? '#729e63' : '#53853f';
+                strokeCol = '#3f6a2e';
+              }
+            }
+          } else {
+            // Snow slope with alpine rocky shadow on steep shaded faces
+            if (steep > 1.4 && slopeLight < -0.4) {
+              fillCol = '#94a3b8';
+              strokeCol = '#64748b';
+            } else if (slopeLight > 0.35) {
+              fillCol = '#ffffff';
+              strokeCol = '#cbd5e1';
+            } else if (slopeLight < -0.25) {
+              fillCol = '#b8cde3';
+              strokeCol = '#8fa9c4';
+            } else {
+              fillCol = '#deecfb';
+              strokeCol = '#b4cde6';
+            }
+          }
+
+          ctx.beginPath();
+          ctx.moveTo(pN.x, pN.y);
+          ctx.lineTo(pE.x, pE.y);
+          ctx.lineTo(pS.x, pS.y);
+          ctx.lineTo(pW.x, pW.y);
+          ctx.closePath();
+          ctx.fillStyle = fillCol;
+          ctx.fill();
+          ctx.strokeStyle = strokeCol;
+          ctx.lineWidth = Math.max(0.8, 0.9 * z);
+          ctx.stroke();
+        }
+
+        // Realistic per-tile snow accumulation & drifts
+        const localSnow = state.snowGrid[gy]?.[gx] ?? state.snowAccum;
+        if (localSnow > 0.03 && tType !== 'snow') {
+          const snowAlpha = tType === 'ice'
+            ? Math.min(0.42, localSnow * 0.45)
+            : Math.min(0.94, localSnow * 1.05);
+          ctx.beginPath();
+          ctx.moveTo(pN.x, pN.y);
+          ctx.lineTo(pE.x, pE.y);
+          ctx.lineTo(pS.x, pS.y);
+          ctx.lineTo(pW.x, pW.y);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(238, 246, 255, ${snowAlpha.toFixed(2)})`;
+          ctx.fill();
+
+          if (localSnow > 0.25 && tType !== 'ice') {
+            const cX = (pN.x + pE.x + pS.x + pW.x) * 0.25;
+            const cY = (pN.y + pE.y + pS.y + pW.y) * 0.25;
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.65, (localSnow - 0.2) * 0.8).toFixed(2)})`;
+            ctx.beginPath();
+            ctx.ellipse(cX, cY, 14 * z * localSnow, 5 * z * localSnow, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        if (tType === 'ice') {
+          drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket);
+        }
+      }
+    }
+
+    // Hover highlight (conforms to sloped quad)
+    if (!state.snowMode && state.hoverTile) {
+      const { x, y } = state.hoverTile;
+      const catItem = CATALOG_MAP[state.selectedItem];
+      const sz = (state.selectedTool === 'place' && catItem && catItem.size) ? catItem.size : 1;
+      for (let dx = 0; dx < sz; dx++) {
+        for (let dy = 0; dy < sz; dy++) {
+          const tx = x + dx, ty = y + dy;
+          if (tx < GRID_SIZE && ty < GRID_SIZE) {
+            const pN = cornerScreen(tx, ty);
+            const pE = cornerScreen(tx + 1, ty);
+            const pS = cornerScreen(tx + 1, ty + 1);
+            const pW = cornerScreen(tx, ty + 1);
+            ctx.beginPath();
+            ctx.moveTo(pN.x, pN.y);
+            ctx.lineTo(pE.x, pE.y);
+            ctx.lineTo(pS.x, pS.y);
+            ctx.lineTo(pW.x, pW.y);
+            ctx.closePath();
+            ctx.strokeStyle = state.selectedTool === 'erase' ? '#ef4444' : '#fbbf24';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = state.selectedTool === 'erase' ? 'rgba(239,68,68,0.22)' : 'rgba(251,191,36,0.22)';
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    // Objects
+    const sortedObjects = [...state.objects].sort((a, b) => {
+      const da = (a.x + (a.size || 1) - 1) + (a.y + (a.size || 1) - 1);
+      const db = (b.x + (b.size || 1) - 1) + (b.y + (b.size || 1) - 1);
+      return da - db;
+    });
+
+    smokeSpawnTimer += dt;
+    const shouldSpawnSmoke = smokeSpawnTimer >= 0.35;
+    if (shouldSpawnSmoke) smokeSpawnTimer = 0;
+
+    for (const obj of sortedObjects) {
+      const s = obj.size || 1;
+      const objElev = tileElev(obj.x, obj.y);
+      const anchor = gridToScreen(obj.x + s - 1, obj.y + s - 1, objElev);
+      const footCenterY = anchor.y + TILE_H * z;
+      const spr = getObjectSprite(obj, snowBucket);
+      const drawW = (spr.width / SPRITE_SS) * z;
+      const drawH = (spr.height / SPRITE_SS) * z;
+      const drawX = anchor.x - drawW / 2;
+      const drawY = footCenterY - drawH + 10 * z;
+
+      let bobY = 0;
+      if (obj.type === 'carolers' || obj.type === 'skater') {
+        bobY = Math.sin(animClock * 4 + obj.id) * 1.2 * z;
+      }
+
+      if (obj.type === 'lamppost' || obj.type === 'bonfire' || obj.fireplace) {
+        const glowR = (obj.type === 'lamppost' ? 46 : (obj.type === 'bonfire' ? 50 : 36)) * z;
+        const gyPos = footCenterY - (TILE_H * z) / 2;
+        const grad = ctx.createRadialGradient(anchor.x, gyPos, 2, anchor.x, gyPos, glowR);
+        const flicker = 0.24 + Math.sin(animClock * 9 + obj.id * 3) * 0.04;
+        grad.addColorStop(0, `rgba(253, 224, 71, ${flicker.toFixed(2)})`);
+        grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(anchor.x, gyPos, glowR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.drawImage(spr, drawX, drawY + bobY, drawW, drawH);
+
+      // Smooth vector flames for bonfire
+      if (obj.type === 'bonfire') {
+        const fx = anchor.x, fy = footCenterY - 12 * z;
+        const fH = (6 + Math.abs(Math.sin(animClock * 12 + obj.id)) * 5) * z;
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(fx - 4 * z, fy);
+        ctx.quadraticCurveTo(fx - 2 * z, fy - fH, fx, fy - fH);
+        ctx.quadraticCurveTo(fx + 2 * z, fy - fH, fx + 4 * z, fy);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.moveTo(fx - 2 * z, fy);
+        ctx.quadraticCurveTo(fx, fy - fH * 0.7, fx + 2 * z, fy);
+        ctx.closePath(); ctx.fill();
+      }
+
+      if (obj.lights && obj.lights !== 'none') {
+        drawChristmasLights(ctx, obj, anchor.x, footCenterY, z);
+      }
+
+      if (shouldSpawnSmoke && obj.fireplace && CATALOG_MAP[obj.type]?.hasFireplace) {
+        spawnSmoke(anchor.x + (obj.flip ? -7 : 7) * z, footCenterY - 48 * z);
+      }
+
+      if (!state.snowMode && state.inspectedObjId === obj.id) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(drawX + 4, drawY + 4, drawW - 8, drawH - 8, 6);
+        ctx.stroke();
+      }
+    }
+
+    // Soft circular smoke puffs (blown by dynamic wind)
+    for (let i = smokeParticles.length - 1; i >= 0; i--) {
+      const p = smokeParticles[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) { smokeParticles.splice(i, 1); continue; }
+      p.x += (p.vx + state.wind.speed * 0.25) * dt * z * 0.5;
+      p.y += p.vy * dt * z * 0.5;
+      const alpha = (1 - p.life / p.maxLife) * 0.38;
+      const r = (p.size + p.life * 2.2) * z;
+      ctx.fillStyle = `rgba(226, 232, 240, ${alpha.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Multi-layer wind-driven snowfall (only a few near-camera ambiance flakes)
+    if (state.snowMode) {
+      const activeCount = state.snowLevel === 1 ? 150 : (state.snowLevel === 2 ? 320 : 520);
+      const speedMult = state.snowLevel === 1 ? 0.7 : (state.snowLevel === 2 ? 1.15 : 1.9);
+      for (let i = 0; i < activeCount; i++) {
+        const f = snowflakes[i];
+        const vy = f.speed * speedMult;
+        const vx = state.wind.speed * f.windFactor + Math.sin(animClock * 1.8 + f.phase + f.y * 0.01) * f.swirl;
+        f.y += vy * dt;
+        f.x += vx * dt;
+        if (f.y > viewH + 8) { f.y = -6; f.x = Math.random() * viewW; }
+        if (f.x > viewW + 8) f.x = -6;
+        if (f.x < -8) f.x = viewW + 6;
+
+        ctx.fillStyle = `rgba(248, 250, 252, ${f.alpha})`;
+        if (state.snowLevel === 3 && f.layer !== 'near' && state.wind.speed > 90) {
+          // Wind-whipped snow streak in blizzard gusts
+          ctx.strokeStyle = `rgba(248, 250, 252, ${(f.alpha * 0.85).toFixed(2)})`;
+          ctx.lineWidth = f.r * 0.9;
+          ctx.beginPath();
+          ctx.moveTo(f.x, f.y);
+          ctx.lineTo(f.x - vx * 0.025, f.y - vy * 0.025);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    requestAnimationFrame(renderFrame);
+  }
+
+  function drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket = 0) {
+    const isIce = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE && state.terrain[y][x] === 'ice';
+    const nLand = !isIce(gx, gy - 1);
+    const eLand = !isIce(gx + 1, gy);
+    const sLand = !isIce(gx, gy + 1);
+    const wLand = !isIce(gx - 1, gy);
+    if (!nLand && !eLand && !sLand && !wLand) return;
+
+    const cX = (pN.x + pE.x + pS.x + pW.x) * 0.25;
+    const cY = (pN.y + pE.y + pS.y + pW.y) * 0.25;
+    const mid = (a, b) => ({ x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5 });
+    const pull = (pt, amt) => ({ x: pt.x + (cX - pt.x) * amt, y: pt.y + (cY - pt.y) * amt });
+
+    const mNE = mid(pN, pE);
+    const mES = mid(pE, pS);
+    const mSW = mid(pS, pW);
+    const mWN = mid(pW, pN);
+
+    ctx.fillStyle = snowBucket >= 2 ? '#deecfb' : (snowBucket === 1 ? '#7da66c' : '#53853f');
+    ctx.strokeStyle = snowBucket >= 2 ? '#7dd3fc' : '#3f6a2e';
+    ctx.lineWidth = Math.max(1, 1.4 * z);
+
+    // Round off outer corners where two adjacent edges meet land
+    const roundCorner = (a, corner, b) => {
+      const ctrl = pull(corner, 0.55);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.lineTo(corner.x, corner.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.stroke();
+    };
+
+    if (wLand && nLand) roundCorner(mWN, pN, mNE);
+    if (nLand && eLand) roundCorner(mNE, pE, mES);
+    if (eLand && sLand) roundCorner(mES, pS, mSW);
+    if (sLand && wLand) roundCorner(mSW, pW, mWN);
+
+    // Soft curved snowbank lips along straight edges
+    const drawEdgeLip = (a, b) => {
+      const ctrl = pull(mid(a, b), 0.28);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      ctx.stroke();
+    };
+
+    if (nLand) drawEdgeLip(pN, pE);
+    if (eLand) drawEdgeLip(pE, pS);
+    if (sLand) drawEdgeLip(pS, pW);
+    if (wLand) drawEdgeLip(pW, pN);
+  }
+
+  function drawChristmasLights(ctx, obj, cx, footY, z) {
+    const paletteMap = {
+      warm:   ['#fef08a', '#fde047', '#fef9c3'],
+      multi:  ['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899'],
+      candy:  ['#ef4444', '#ffffff'],
+      icicle: ['#38bdf8', '#e0f2fe', '#7dd3fc'],
+    };
+    const cols = paletteMap[obj.lights] || paletteMap.warm;
+    const mode = obj.lightMode || 'twinkle';
+
+    let pts = [];
+    if (obj.type === 'pine' || obj.type === 'grandtree') {
+      const rows = obj.type === 'grandtree' ? 4 : 3;
+      for (let r = 0; r < rows; r++) {
+        const y = -17 - r * 11;
+        const w = 15 - r * 4;
+        for (let dx = -w; dx <= w; dx += 6) pts.push([dx, y - Math.abs(dx) * 0.2]);
+      }
+    } else if (obj.type === 'sleigh') {
+      for (let dx = -12; dx <= 12; dx += 6) pts.push([dx, -18]);
+    } else if (obj.type === 'townhall') {
+      for (let dx = -42; dx <= 42; dx += 8) pts.push([dx, -38 - (42 - Math.abs(dx)) * 0.35]);
+    } else {
+      for (let dx = -22; dx <= 22; dx += 7) pts.push([dx, -27 - (22 - Math.abs(dx)) * 0.35]);
+    }
+
+    pts.forEach(([dx, dy], idx) => {
+      let on = true;
+      if (mode === 'twinkle') on = Math.sin(animClock * 5 + idx * 1.7 + obj.id) > -0.35;
+      else if (mode === 'chase') on = (Math.floor(animClock * 6) + idx) % 3 !== 0;
+      if (!on) return;
+      const col = cols[(idx + obj.id) % cols.length];
+      const bx = cx + dx * z, by = footY + dy * z;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(bx, by, Math.max(1.4, 1.6 * z), 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // =========================================================================
+  // 8. INPUT HANDLING
+  // =========================================================================
+  let isPanning = false, isPainting = false, spaceDown = false, paintUndoPushed = false;
+  let panStart = { x: 0, y: 0, cx: 0, cy: 0 };
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  canvas.addEventListener('mousedown', e => {
+    if (state.snowMode) return;
+    if (e.button === 1 || (e.button === 0 && spaceDown)) {
+      isPanning = true;
+      panStart = { x: e.clientX, y: e.clientY, cx: state.camera.x, cy: state.camera.y };
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+    const tile = screenToGrid(e.clientX, e.clientY);
+    if (!tile) return;
+    if (e.button === 2) {
+      isPainting = true; paintUndoPushed = false; eraseAt(tile.x, tile.y); return;
+    }
+    if (e.button === 0) {
+      if (state.selectedTool === 'inspect') {
+        inspectAt(tile.x, tile.y);
+      } else if (state.selectedTool === 'erase') {
+        isPainting = true; paintUndoPushed = false; eraseAt(tile.x, tile.y);
+      } else {
+        isPainting = true; paintUndoPushed = false; placeAt(tile.x, tile.y);
+      }
+    }
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (isPanning) {
+      state.camera.x = panStart.cx + (e.clientX - panStart.x);
+      state.camera.y = panStart.cy + (e.clientY - panStart.y);
+      return;
+    }
+    const tile = screenToGrid(e.clientX, e.clientY);
+    state.hoverTile = tile;
+    if (isPainting && tile && !state.snowMode) {
+      if (e.buttons === 2 || state.selectedTool === 'erase') eraseAt(tile.x, tile.y);
+      else if (state.selectedTool === 'place' && CATALOG_MAP[state.selectedItem]?.type === 'terrain') {
+        placeAt(tile.x, tile.y);
+      }
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isPanning) { isPanning = false; canvas.style.cursor = spaceDown ? 'grab' : 'crosshair'; }
+    isPainting = false; paintUndoPushed = false;
+  });
+
+  const ZOOM_LEVELS = [0.2, 0.28, 0.4, 0.55, 0.75, 1, 1.5, 2, 3];
+  function setZoom(nextZoom, pivotX = viewW / 2, pivotY = viewH / 2) {
+    const clamped = Math.max(0.2, Math.min(3, nextZoom));
+    if (clamped === state.camera.zoom) return;
+    const ratio = clamped / state.camera.zoom;
+    state.camera.x = pivotX - (pivotX - state.camera.x) * ratio;
+    state.camera.y = pivotY - (pivotY - state.camera.y) * ratio;
+    state.camera.zoom = clamped;
+  }
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
+    const cur = idx === -1 ? 5 : idx;
+    const nextIdx = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, cur + (e.deltaY < 0 ? 1 : -1)));
+    setZoom(ZOOM_LEVELS[nextIdx], e.clientX, e.clientY);
+  }, { passive: false });
+
+  function placeAt(gx, gy) {
+    const item = CATALOG_MAP[state.selectedItem];
+    if (!item) return;
+    if (item.type === 'elev') {
+      pushUndo();
+      for (let dy = 0; dy <= 1; dy++) {
+        for (let dx = 0; dx <= 1; dx++) {
+          const cur = state.corners[gy + dy][gx + dx] || 0;
+          state.corners[gy + dy][gx + dx] = Math.max(0, Math.min(12, cur + item.delta * 0.75));
+        }
+      }
+      audio.playClick(item.delta > 0 ? 520 : 340);
+      autoSave();
+      return;
+    }
+    if (item.type === 'terrain') {
+      if (state.terrain[gy][gx] === item.id) return;
+      if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
+      state.terrain[gy][gx] = item.id;
+      audio.playClick(420); autoSave(); return;
+    }
+    const sz = item.size || 1;
+    if (!canPlaceObject(gx, gy, sz)) return;
+    pushUndo();
+    state.objects.push({
+      id: state.nextObjId++,
+      type: item.id, x: gx, y: gy, size: sz,
+      color: state.config.color,
+      lights: item.hasLights ? state.config.lights : 'none',
+      lightMode: state.config.lightMode,
+      fireplace: item.hasFireplace ? state.config.fireplace : false,
+      flip: item.hasFlip ? state.config.flip : false,
+      horseColor: item.hasHorseColor ? state.config.horseColor : 'white',
+    });
+    audio.playClick(580); autoSave();
+  }
+
+  function eraseAt(gx, gy) {
+    const obj = findObjectAt(gx, gy);
+    if (obj) {
+      if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
+      state.objects = state.objects.filter(o => o.id !== obj.id);
+      if (state.inspectedObjId === obj.id) { state.inspectedObjId = null; renderConfigPanel(); }
+      audio.playClick(260); autoSave();
+    } else if (state.terrain[gy][gx] !== 'grass' && state.terrain[gy][gx] !== 'shrub') {
+      if (!paintUndoPushed) { pushUndo(); paintUndoPushed = true; }
+      state.terrain[gy][gx] = 'grass';
+      audio.playClick(300); autoSave();
+    }
+  }
+
+  function inspectAt(gx, gy) {
+    const obj = findObjectAt(gx, gy);
+    state.inspectedObjId = obj ? obj.id : null;
+    if (obj) {
+      audio.playClick(640);
+      openDockDialog('dialog-options');
+    }
+    renderConfigPanel();
+  }
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.code === 'Space') { spaceDown = true; if (!isPanning) canvas.style.cursor = 'grab'; e.preventDefault(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+    if (e.key.toLowerCase() === 'r') toggleFlip();
+    if (e.key.toLowerCase() === 'b') toggleDockDialog('dialog-build');
+    if (e.key.toLowerCase() === 'o') toggleDockDialog('dialog-options');
+    if (e.key === '1') setTool('place');
+    if (e.key === '2') setTool('inspect');
+    if (e.key === '3') setTool('erase');
+    if (!e.ctrlKey && !e.metaKey && (e.key === '+' || e.key === '=')) {
+      const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
+      setZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, (idx === -1 ? 5 : idx) + 1)]);
+    }
+    if (!e.ctrlKey && !e.metaKey && (e.key === '-' || e.key === '_')) {
+      const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
+      setZoom(ZOOM_LEVELS[Math.max(0, (idx === -1 ? 5 : idx) - 1)]);
+    }
+    if (e.key === 'Escape') {
+      if (state.snowMode) exitSnowMode();
+      else closeAllDockDialogs();
+    }
+  });
+
+  window.addEventListener('keyup', e => {
+    if (e.code === 'Space') { spaceDown = false; if (!isPanning) canvas.style.cursor = 'crosshair'; }
+  });
+
+  // =========================================================================
+  // 9. LEFT TOOLBAR DIALOGS & CONFIGURATOR
+  // =========================================================================
+  function closeAllDockDialogs() {
+    document.querySelectorAll('.dock-dialog').forEach(d => d.classList.remove('open'));
+    document.getElementById('btn-dock-build').classList.remove('dialog-open');
+    document.getElementById('btn-dock-options').classList.remove('dialog-open');
+  }
+
+  function openDockDialog(id) {
+    const already = document.getElementById(id).classList.contains('open');
+    closeAllDockDialogs();
+    if (!already) {
+      document.getElementById(id).classList.add('open');
+      if (id === 'dialog-build') document.getElementById('btn-dock-build').classList.add('dialog-open');
+      if (id === 'dialog-options') document.getElementById('btn-dock-options').classList.add('dialog-open');
+    }
+  }
+
+  function toggleDockDialog(id) {
+    const el = document.getElementById(id);
+    if (el.classList.contains('open')) closeAllDockDialogs();
+    else openDockDialog(id);
+  }
+
+  function setTool(tool) {
+    state.selectedTool = tool;
+    if (tool !== 'inspect') state.inspectedObjId = null;
+    document.getElementById('tool-place').classList.toggle('active', tool === 'place');
+    document.getElementById('tool-inspect').classList.toggle('active', tool === 'inspect');
+    document.getElementById('tool-erase').classList.toggle('active', tool === 'erase');
+    renderConfigPanel();
+  }
+
+  function toggleFlip() {
+    if (state.inspectedObjId) {
+      const obj = state.objects.find(o => o.id === state.inspectedObjId);
+      if (obj && CATALOG_MAP[obj.type]?.hasFlip) { pushUndo(); obj.flip = !obj.flip; autoSave(); }
+    } else {
+      state.config.flip = !state.config.flip;
+    }
+    audio.playClick(500);
+    renderConfigPanel();
+  }
+
+  function renderPalette() {
+    const grid = document.getElementById('item-grid');
+    grid.innerHTML = '';
+    const items = CATALOG.filter(c => c.cat === state.selectedCat);
+    for (const item of items) {
+      const card = document.createElement('div');
+      card.className = 'item-card' + (state.selectedItem === item.id ? ' selected' : '');
+      const thumb = getItemThumbnail(item);
+      const preview = document.createElement('canvas');
+      preview.width = 116; preview.height = 116;
+      const pctx = preview.getContext('2d');
+      pctx.imageSmoothingEnabled = true;
+      pctx.imageSmoothingQuality = 'high';
+      const scale = Math.min(104 / thumb.width, 104 / thumb.height);
+      const dw = thumb.width * scale, dh = thumb.height * scale;
+      pctx.drawImage(thumb, (116 - dw) / 2, (116 - dh) / 2, dw, dh);
+
+      const label = document.createElement('span');
+      label.textContent = item.name;
+      card.appendChild(preview);
+      card.appendChild(label);
+
+      card.onclick = () => {
+        state.selectedItem = item.id;
+        setTool('place');
+        renderPalette();
+        renderConfigPanel();
+        audio.playClick(540);
+      };
+      grid.appendChild(card);
+    }
+  }
+
+  function renderConfigPanel() {
+    const titleEl = document.getElementById('config-item-title');
+    const descEl = document.getElementById('config-item-desc');
+    const container = document.getElementById('config-options-container');
+    container.innerHTML = '';
+
+    let targetObj = null;
+    let itemMeta = CATALOG_MAP[state.selectedItem];
+
+    if (state.selectedTool === 'inspect') {
+      targetObj = state.objects.find(o => o.id === state.inspectedObjId);
+      if (!targetObj) {
+        titleEl.textContent = '🔍 Inspect Mode';
+        descEl.textContent = 'Click any building or feature on the map to customize it.';
+        return;
+      }
+      itemMeta = CATALOG_MAP[targetObj.type];
+      titleEl.textContent = `🎨 ${itemMeta.name}`;
+      descEl.textContent = `Tile (${targetObj.x}, ${targetObj.y}) — edits apply live.`;
+    } else {
+      titleEl.textContent = itemMeta ? `🎨 ${itemMeta.name}` : '🎨 Customize';
+      descEl.textContent = itemMeta ? itemMeta.desc : '';
+    }
+
+    if (!itemMeta) return;
+    const activeCfg = targetObj || state.config;
+
+    const mutate = (key, val) => {
+      if (targetObj) { pushUndo(); targetObj[key] = val; autoSave(); }
+      else { state.config[key] = val; }
+      audio.playClick(520);
+      renderConfigPanel();
+    };
+
+    if (itemMeta.hasColor) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `<label><span>Style / Color</span><span>${PALETTES[activeCfg.color]?.name || ''}</span></label>`;
+      const group = document.createElement('div');
+      group.className = 'chip-group';
+      for (const [k, pal] of Object.entries(PALETTES)) {
+        const dot = document.createElement('div');
+        dot.className = 'color-dot' + (activeCfg.color === k ? ' active' : '');
+        dot.style.background = pal.roof;
+        dot.title = pal.name;
+        dot.onclick = () => mutate('color', k);
+        group.appendChild(dot);
+      }
+      row.appendChild(group);
+      container.appendChild(row);
+    }
+
+    if (itemMeta.hasHorseColor) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `<label>Coat Color</label>`;
+      const group = document.createElement('div');
+      group.className = 'chip-group';
+      for (const hc of HORSE_COLORS) {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (activeCfg.horseColor === hc.id ? ' active' : '');
+        chip.textContent = hc.name;
+        chip.onclick = () => mutate('horseColor', hc.id);
+        group.appendChild(chip);
+      }
+      row.appendChild(group);
+      container.appendChild(row);
+    }
+
+    if (itemMeta.hasLights) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `<label>Christmas Lights</label>`;
+      const group = document.createElement('div');
+      group.className = 'chip-group';
+      for (const ls of LIGHT_STYLES) {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (activeCfg.lights === ls.id ? ' active' : '');
+        chip.textContent = ls.name;
+        chip.onclick = () => mutate('lights', ls.id);
+        group.appendChild(chip);
+      }
+      row.appendChild(group);
+      container.appendChild(row);
+
+      if (activeCfg.lights !== 'none') {
+        const mRow = document.createElement('div');
+        mRow.className = 'option-row';
+        mRow.innerHTML = `<label>Light Pattern</label>`;
+        const mGroup = document.createElement('div');
+        mGroup.className = 'chip-group';
+        for (const lm of LIGHT_MODES) {
+          const chip = document.createElement('div');
+          chip.className = 'chip' + (activeCfg.lightMode === lm.id ? ' active' : '');
+          chip.textContent = lm.name;
+          chip.onclick = () => mutate('lightMode', lm.id);
+          mGroup.appendChild(chip);
+        }
+        mRow.appendChild(mGroup);
+        container.appendChild(mRow);
+      }
+    }
+
+    if (itemMeta.hasFireplace) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      const sw = document.createElement('div');
+      sw.className = 'toggle-switch';
+      sw.innerHTML = `<span>🔥 Fireplace & Chimney</span><div class="toggle-pill ${activeCfg.fireplace ? 'on' : ''}"></div>`;
+      sw.onclick = () => mutate('fireplace', !activeCfg.fireplace);
+      row.appendChild(sw);
+      container.appendChild(row);
+    }
+
+    if (itemMeta.hasFlip) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      const sw = document.createElement('div');
+      sw.className = 'toggle-switch';
+      sw.innerHTML = `<span>🔄 Facing</span><span style="color:var(--accent-gold);font-weight:600;">${activeCfg.flip ? 'Right' : 'Left'}</span>`;
+      sw.onclick = () => mutate('flip', !activeCfg.flip);
+      row.appendChild(sw);
+      container.appendChild(row);
+    }
+  }
+
+  // =========================================================================
+  // 10. SNOW MODE, SAVES & SHARE
+  // =========================================================================
+  function enterSnowMode(showGreeting = false) {
+    state.snowMode = true;
+    closeAllDockDialogs();
+    document.getElementById('left-dock').classList.add('hidden-editor');
+    document.getElementById('btn-exit-snow').classList.add('visible');
+    if (showGreeting) showGreetingBanner();
+  }
+
+  function exitSnowMode() {
+    state.snowMode = false;
+    document.getElementById('left-dock').classList.remove('hidden-editor');
+    document.getElementById('btn-exit-snow').classList.remove('visible');
+    document.getElementById('greeting-banner').classList.remove('visible');
+  }
+
+  function showGreetingBanner() {
+    document.getElementById('banner-title').textContent = state.greeting.title || "Season's Greetings!";
+    document.getElementById('banner-msg').textContent = state.greeting.message || '';
+    document.getElementById('banner-sig').textContent = state.greeting.signature || '';
+    document.getElementById('greeting-banner').classList.add('visible');
+  }
+
+  function serializeVillage() {
+    return {
+      version: 3,
+      gridSize: GRID_SIZE,
+      terrain: state.terrain,
+      corners: state.corners,
+      objects: state.objects,
+      nextObjId: state.nextObjId,
+      snowAccum: state.snowAccum,
+      greeting: state.greeting,
+      savedAt: new Date().toISOString(),
+    };
+  }
+
+  function loadVillageData(data, showBannerIfGreet = false) {
+    if (!data || !Array.isArray(data.terrain) || !Array.isArray(data.objects)) {
+      alert('Invalid village file format.');
+      return;
+    }
+    if (data.terrain.length < GRID_SIZE) {
+      initEmptyMap();
+      const offset = Math.floor((GRID_SIZE - data.terrain.length) / 2);
+      for (let y = 0; y < data.terrain.length; y++) {
+        for (let x = 0; x < data.terrain[y].length; x++) {
+          state.terrain[y + offset][x + offset] = data.terrain[y][x];
+        }
+      }
+      if (Array.isArray(data.corners)) {
+        for (let cy = 0; cy < data.corners.length; cy++) {
+          for (let cx = 0; cx < data.corners[cy].length; cx++) {
+            state.corners[cy + offset][cx + offset] = data.corners[cy][cx];
+          }
+        }
+      }
+      state.objects = data.objects.map(o => ({ ...o, x: o.x + offset, y: o.y + offset }));
+    } else {
+      state.terrain = data.terrain;
+      state.corners = data.corners || Array.from({ length: GRID_SIZE + 1 }, () => Array.from({ length: GRID_SIZE + 1 }, () => 0));
+      state.objects = data.objects;
+    }
+    state.nextObjId = data.nextObjId || (state.objects.reduce((m, o) => Math.max(m, o.id), 0) + 1);
+    state.snowAccum = typeof data.snowAccum === 'number' ? data.snowAccum : 0;
+    state.snowGrid = Array.from({ length: GRID_SIZE }, () =>
+      Array.from({ length: GRID_SIZE }, () => state.snowAccum)
+    );
+    if (data.greeting) state.greeting = data.greeting;
+    state.undoStack = []; state.redoStack = []; state.inspectedObjId = null;
+    updateUndoButtons();
+    renderConfigPanel();
+    autoSave();
+    if (showBannerIfGreet && state.greeting?.message) enterSnowMode(true);
+  }
+
+  function autoSave() {
+    try { localStorage.setItem(STORAGE_AUTOSAVE, JSON.stringify(serializeVillage())); } catch (_) {}
+  }
+
+  function getSavedSlots() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_SLOTS) || '[]'); } catch (_) { return []; }
+  }
+
+  function renderSaveSlots() {
+    const list = document.getElementById('save-slots-list');
+    const slots = getSavedSlots();
+    list.innerHTML = '';
+    if (!slots.length) {
+      list.innerHTML = `<div style="color:var(--text-muted);font-size:11px;padding:6px;">No saved villages yet.</div>`;
+      return;
+    }
+    slots.forEach((slot, idx) => {
+      const row = document.createElement('div');
+      row.className = 'slot-item';
+      row.innerHTML = `
+        <div class="slot-info">
+          <strong>${slot.name}</strong>
+          <small>${slot.data.objects.length} items • ${new Date(slot.data.savedAt).toLocaleString()}</small>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button class="btn" data-load="${idx}">Load</button>
+          <button class="btn btn-danger" data-del="${idx}">✕</button>
+        </div>
+      `;
+      row.querySelector('[data-load]').onclick = () => { pushUndo(); loadVillageData(slot.data, false); closeModal('modal-saves'); };
+      row.querySelector('[data-del]').onclick = () => {
+        const updated = getSavedSlots().filter((_, i) => i !== idx);
+        localStorage.setItem(STORAGE_SLOTS, JSON.stringify(updated));
+        renderSaveSlots();
+      };
+      list.appendChild(row);
+    });
+  }
+
+  function buildSampleVillage() {
+    initEmptyMap();
+    const mid = Math.floor(GRID_SIZE / 2);
+    for (let i = mid - 10; i <= mid + 10; i++) {
+      state.terrain[mid - 1][i] = 'road';
+      state.terrain[mid][i] = 'road';
+      state.terrain[i][mid - 1] = 'road';
+      state.terrain[i][mid] = 'road';
+    }
+    for (let x = mid - 3; x <= mid + 2; x++) {
+      for (let y = mid - 3; y <= mid + 2; y++) {
+        state.terrain[y][x] = 'plaza';
+      }
+    }
+    for (let x = mid + 4; x <= mid + 8; x++) {
+      for (let y = mid + 3; y <= mid + 7; y++) {
+        state.terrain[y][x] = 'ice';
+      }
+    }
+
+    let id = 1;
+    const add = (type, x, y, opts = {}) => {
+      const meta = CATALOG_MAP[type];
+      state.objects.push({
+        id: id++, type, x, y, size: meta.size || 1,
+        color: opts.color || 'red',
+        lights: opts.lights || 'warm',
+        lightMode: opts.lightMode || 'twinkle',
+        fireplace: opts.fireplace !== undefined ? opts.fireplace : !!meta.hasFireplace,
+        flip: !!opts.flip,
+        horseColor: opts.horseColor || 'white',
+      });
+    };
+
+    add('townhall', mid - 3, mid - 5, { color: 'red', lights: 'warm' });
+    add('grandtree', mid - 1, mid - 1, { lights: 'multi', lightMode: 'twinkle' });
+    add('carolers', mid - 2, mid);
+
+    add('bakery', mid - 6, mid - 2, { color: 'ginger', lights: 'candy' });
+    add('workshop', mid + 3, mid - 3, { color: 'green', lights: 'multi' });
+    add('cottage', mid - 5, mid + 2, { color: 'blue', lights: 'icicle' });
+    add('cottage', mid + 2, mid + 1, { color: 'red', lights: 'warm', flip: true });
+    add('cabin', mid - 8, mid + 2, { color: 'timber', lights: 'warm' });
+    add('chapel', mid - 5, mid - 6, { color: 'blue', lights: 'warm' });
+
+    add('lamppost', mid - 4, mid - 2);
+    add('lamppost', mid + 1, mid - 2);
+    add('lamppost', mid - 4, mid + 1);
+    add('lamppost', mid + 1, mid + 1);
+    add('stall', mid - 2, mid - 2, { color: 'red', lights: 'warm' });
+    add('stall', mid, mid - 2, { color: 'green', lights: 'multi' });
+
+    add('skater', mid + 5, mid + 4);
+    add('skater', mid + 7, mid + 6, { flip: true });
+    add('sleigh', mid - 1, mid + 3, { lights: 'warm' });
+    add('reindeer', mid, mid + 3);
+    add('horse', mid - 7, mid - 1, { horseColor: 'chestnut' });
+    add('snowman', mid - 3, mid + 1);
+    add('bonfire', mid - 2, mid + 1);
+
+    const trees = [
+      [mid - 9, mid - 7], [mid - 7, mid - 8], [mid - 2, mid - 9], [mid + 3, mid - 8],
+      [mid + 6, mid - 6], [mid + 8, mid - 3], [mid - 9, mid + 5], [mid - 7, mid + 7],
+      [mid - 3, mid + 8], [mid + 9, mid + 2], [mid + 10, mid + 6], [mid + 5, mid - 5]
+    ];
+    trees.forEach(([x, y], i) => add('pine', x, y, { lights: i % 2 === 0 ? 'warm' : 'none' }));
+
+    state.nextObjId = id;
+    state.greeting = {
+      title: 'Welcome to Pinewood Hollow!',
+      message: 'Wishing you a cozy, bright, and joyful holiday season.',
+      signature: '— Christmas Village Editor',
+    };
+  }
+
+  // =========================================================================
+  // 11. EVENT WIRING
+  // =========================================================================
+  window.openModal = id => document.getElementById(id).classList.add('open');
+  window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+  document.getElementById('btn-dock-build').onclick = () => toggleDockDialog('dialog-build');
+  document.getElementById('btn-dock-options').onclick = () => toggleDockDialog('dialog-options');
+  document.getElementById('close-build').onclick = closeAllDockDialogs;
+  document.getElementById('close-options').onclick = closeAllDockDialogs;
+
+  document.querySelectorAll('.cat-tab').forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.selectedCat = tab.dataset.cat;
+      const first = CATALOG.find(c => c.cat === state.selectedCat);
+      if (first) state.selectedItem = first.id;
+      setTool('place');
+      renderPalette();
+      renderConfigPanel();
+    };
+  });
+
+  document.getElementById('tool-place').onclick = () => setTool('place');
+  document.getElementById('tool-inspect').onclick = () => setTool('inspect');
+  document.getElementById('tool-erase').onclick = () => setTool('erase');
+  document.getElementById('btn-rotate').onclick = toggleFlip;
+  document.getElementById('btn-undo').onclick = undo;
+  document.getElementById('btn-redo').onclick = redo;
+  document.getElementById('btn-zoom-in').onclick = () => {
+    const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
+    setZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, (idx === -1 ? 5 : idx) + 1)]);
+  };
+  document.getElementById('btn-zoom-out').onclick = () => {
+    const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
+    setZoom(ZOOM_LEVELS[Math.max(0, (idx === -1 ? 5 : idx) - 1)]);
+  };
+  document.getElementById('btn-clear-snow').onclick = () => {
+    state.snowAccum = 0;
+    state.snowGrid = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => 0));
+    document.getElementById('accum-label').textContent = '0%';
+  };
+
+  function toggleAudio() {
+    state.audioEnabled = !state.audioEnabled;
+    audio.setEnabled(state.audioEnabled);
+    document.getElementById('btn-audio').textContent = state.audioEnabled ? '🔊' : '🔇';
+  }
+  document.getElementById('btn-audio').onclick = toggleAudio;
+
+  document.getElementById('btn-snow-mode').onclick = () => toggleDockDialog('dialog-snow');
+  document.getElementById('close-snow-dialog').onclick = closeAllDockDialogs;
+  document.querySelectorAll('.snow-start-btn').forEach(btn => {
+    btn.onclick = () => {
+      state.snowLevel = Number(btn.dataset.lvl);
+      document.querySelectorAll('.snow-lvl-btn').forEach(b => {
+        b.classList.toggle('active', Number(b.dataset.lvl) === state.snowLevel);
+      });
+      enterSnowMode(false);
+    };
+  });
+  document.getElementById('btn-exit-snow').onclick = exitSnowMode;
+  document.getElementById('btn-close-banner').onclick = () => {
+    document.getElementById('greeting-banner').classList.remove('visible');
+  };
+
+  document.querySelectorAll('.snow-lvl-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.snow-lvl-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.snowLevel = Number(btn.dataset.lvl);
+    };
+  });
+
+  document.getElementById('btn-saves').onclick = () => { renderSaveSlots(); openModal('modal-saves'); };
+  document.getElementById('btn-save-slot').onclick = () => {
+    const input = document.getElementById('save-name-input');
+    const name = input.value.trim() || `Village ${new Date().toLocaleTimeString()}`;
+    const slots = getSavedSlots();
+    slots.unshift({ name, data: serializeVillage() });
+    localStorage.setItem(STORAGE_SLOTS, JSON.stringify(slots));
+    input.value = '';
+    renderSaveSlots();
+  };
+  document.getElementById('btn-load-sample').onclick = () => {
+    pushUndo(); buildSampleVillage(); autoSave(); renderConfigPanel(); closeModal('modal-saves');
+  };
+  document.getElementById('btn-generate-terrain').onclick = () => {
+    if (state.objects.length > 0 && !confirm('Replace the current map with this new terrain?')) return;
+    const preset = document.getElementById('new-terrain-preset').value;
+    const elevScale = Number(document.getElementById('new-terrain-elev').value);
+    pushUndo();
+    generateInitialTerrain(preset, elevScale);
+    autoSave();
+    renderConfigPanel();
+    closeModal('modal-saves');
+  };
+
+  document.querySelectorAll('[data-start-preset]').forEach(btn => {
+    btn.onclick = () => {
+      const preset = btn.dataset.startPreset;
+      pushUndo();
+      generateInitialTerrain(preset, preset === 'victorian' ? 1 : 2);
+      autoSave();
+      renderConfigPanel();
+      closeModal('modal-welcome');
+    };
+  });
+  document.getElementById('btn-welcome-sample').onclick = () => {
+    pushUndo();
+    buildSampleVillage();
+    autoSave();
+    renderConfigPanel();
+    closeModal('modal-welcome');
+  };
+
+  document.getElementById('btn-share').onclick = () => {
+    document.getElementById('greet-title').value = state.greeting.title || '';
+    document.getElementById('greet-msg').value = state.greeting.message || '';
+    document.getElementById('greet-sig').value = state.greeting.signature || '';
+    openModal('modal-share');
+  };
+
+  function syncGreetingFromInputs() {
+    state.greeting = {
+      title: document.getElementById('greet-title').value.trim() || "Season's Greetings!",
+      message: document.getElementById('greet-msg').value.trim(),
+      signature: document.getElementById('greet-sig').value.trim(),
+    };
+    autoSave();
+  }
+
+  document.getElementById('btn-export-json').onclick = () => {
+    syncGreetingFromInputs();
+    const blob = new Blob([JSON.stringify(serializeVillage(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'christmas-village.json'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  document.getElementById('btn-import-json-trigger').onclick = () => document.getElementById('import-json-file').click();
+  document.getElementById('import-json-file').onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        pushUndo();
+        loadVillageData(JSON.parse(ev.target.result), true);
+        closeModal('modal-share');
+      } catch (err) { alert('Could not read JSON file: ' + err.message); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  document.getElementById('btn-preview-greeting').onclick = () => {
+    syncGreetingFromInputs();
+    closeModal('modal-share');
+    enterSnowMode(true);
+  };
+
+  // =========================================================================
+  // 12. INITIALIZATION
+  // =========================================================================
+  window.addEventListener('resize', () => { resizeCanvas(); initSnowflakes(); });
+  resizeCanvas();
+  initSnowflakes();
+
+  let loaded = false;
+  try {
+    const raw = localStorage.getItem(STORAGE_AUTOSAVE);
+    if (raw) { loadVillageData(JSON.parse(raw), false); loaded = true; }
+  } catch (_) {}
+
+  if (!loaded) { buildSampleVillage(); autoSave(); }
+
+  centerCamera();
+  renderPalette();
+  renderConfigPanel();
+  requestAnimationFrame(renderFrame);
+})();
+</script>
+</body>
+</html>
