@@ -1,9 +1,12 @@
   // =========================================================================
   // 9. LEFT TOOLBAR DIALOGS & CONFIGURATOR
   // =========================================================================
+  let dockZoneEntered = false;
+
   function closeAllDockDialogs() {
     document.querySelectorAll('.dock-dialog').forEach(d => d.classList.remove('open'));
     document.getElementById('btn-dock-build').classList.remove('dialog-open');
+    dockZoneEntered = false;
   }
 
   function openDockDialog(id) {
@@ -12,6 +15,7 @@
     if (!already) {
       document.getElementById(id).classList.add('open');
       if (id === 'dialog-build') document.getElementById('btn-dock-build').classList.add('dialog-open');
+      if (id !== 'dialog-options') dockZoneEntered = true;
     }
   }
 
@@ -20,6 +24,22 @@
     if (el.classList.contains('open')) closeAllDockDialogs();
     else openDockDialog(id);
   }
+
+  window.addEventListener('mousemove', e => {
+    const openDialog = document.querySelector('.dock-dialog.open');
+    if (!openDialog) return;
+    const activeEl = document.activeElement;
+    if (activeEl && openDialog.contains(activeEl) && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) return;
+
+    const pad = 14;
+    const inRect = r => e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+    const nearZone = inRect(openDialog.getBoundingClientRect()) || inRect(document.getElementById('left-dock').getBoundingClientRect());
+    if (nearZone) {
+      dockZoneEntered = true;
+    } else if (dockZoneEntered) {
+      closeAllDockDialogs();
+    }
+  });
 
   function setTool(tool) {
     state.selectedTool = tool;
