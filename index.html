@@ -492,7 +492,7 @@
       </button>
       <button class="item-card" data-start-preset="lake" style="padding:12px;align-items:flex-start;text-align:left;">
         <strong style="color:#38bdf8;font-size:13px;">⛸️ Lakeside &amp; Peaks</strong>
-        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Central frozen pond with sloped snowy banks and alpine peaks in the back.</span>
+        <span style="color:var(--text-muted);font-size:11px;text-align:left;">Frozen lake in the front with sloped snowy banks and alpine peaks in the back.</span>
       </button>
     </div>
     <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">
@@ -698,6 +698,7 @@
     initEmptyMap();
     const scale = elevScale === 0 ? 0.25 : (elevScale === 1 ? 1.0 : 1.65);
     const mid = GRID_SIZE / 2;
+    const lakeCenter = GRID_SIZE * 0.73;
 
     for (let cy = 0; cy <= GRID_SIZE; cy++) {
       for (let cx = 0; cx <= GRID_SIZE; cx++) {
@@ -705,9 +706,10 @@
         const backDist = (cx + cy) / (GRID_SIZE * 2);
         const ridge = Math.sin((cx - cy) * 0.22) * 0.8 + Math.cos(cx * 0.14 + cy * 0.11) * 0.6;
         const smallHill = Math.max(0, Math.sin(cx * 0.18) * Math.cos(cy * 0.18)) * 1.1;
-        const dx = (cx - mid) / mid;
-        const dy = (cy - mid) / mid;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const alongW = (cx - cy) / mid;
+        const alongD = ((cx + cy) * 0.5 - lakeCenter) / mid;
+        const shoreWobble = Math.sin(cx * 0.25) * 0.07 + Math.cos(cy * 0.29) * 0.06 + Math.sin((cx - cy) * 0.17) * 0.05;
+        const lakeDist = Math.sqrt(alongW * alongW * 0.28 + alongD * alongD * 1.35) + shoreWobble;
         let h = 0;
 
         if (preset === 'victorian') {
@@ -725,12 +727,12 @@
           const backRise = backDist < 0.32 ? ((0.32 - backDist) / 0.32) * 3.0 : 0;
           h = (backRise + smallHill * 1.25 + Math.max(0, ridge * 0.4)) * scale;
         } else if (preset === 'lake') {
-          if (dist < 0.25) {
+          if (lakeDist < 0.42) {
             h = 0;
           } else {
-            const bank = Math.min(1.5, (dist - 0.25) * 3.5);
-            const backRise = backDist < 0.34 ? ((0.34 - backDist) / 0.34) * 3.8 : 0;
-            h = (bank * 0.7 + backRise + Math.max(0, ridge * 0.5)) * scale;
+            const bank = Math.min(1.2, (lakeDist - 0.42) * 2.8);
+            const backRise = backDist < 0.36 ? ((0.36 - backDist) / 0.36) * 4.4 : 0;
+            h = (bank * 0.55 + backRise + (backDist < 0.4 ? Math.max(0, ridge * 0.6) : 0)) * scale;
           }
         }
 
@@ -741,9 +743,12 @@
     if (preset === 'lake') {
       for (let y = 0; y < GRID_SIZE; y++) {
         for (let x = 0; x < GRID_SIZE; x++) {
-          const dx = (x + 0.5 - mid) / mid;
-          const dy = (y + 0.5 - mid) / mid;
-          if (Math.sqrt(dx * dx + dy * dy) < 0.24) {
+          const tx = x + 0.5, ty = y + 0.5;
+          const alongW = (tx - ty) / mid;
+          const alongD = ((tx + ty) * 0.5 - lakeCenter) / mid;
+          const shoreWobble = Math.sin(tx * 0.25) * 0.07 + Math.cos(ty * 0.29) * 0.06 + Math.sin((tx - ty) * 0.17) * 0.05;
+          const lakeDist = Math.sqrt(alongW * alongW * 0.28 + alongD * alongD * 1.35) + shoreWobble;
+          if (lakeDist < 0.41) {
             state.terrain[y][x] = 'ice';
           }
         }
