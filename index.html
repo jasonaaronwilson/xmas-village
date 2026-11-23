@@ -278,22 +278,26 @@
   }
   .toggle-pill.on::after { transform: translateX(14px); }
 
-  /* Snow Mode Floating Controls */
-  #snow-controls {
+  /* Snow Mode Single Lower-Left Exit Button */
+  #btn-exit-snow {
     position: fixed;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%) translateY(90px);
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    bottom: 14px;
+    left: 14px;
+    padding: 7px 12px;
     z-index: 25;
     opacity: 0;
     pointer-events: none;
+    transform: translateY(30px);
     transition: transform 0.35s ease, opacity 0.35s ease;
   }
-  #snow-controls.visible { transform: translateX(-50%) translateY(0); opacity: 0.94; pointer-events: auto; }
+  #btn-exit-snow.visible {
+    transform: translateY(0);
+    opacity: 0.72;
+    pointer-events: auto;
+  }
+  #btn-exit-snow.visible:hover {
+    opacity: 1;
+  }
 
   /* Greeting Banner */
   #greeting-banner {
@@ -430,6 +434,14 @@
     <div>
       <div class="section-title">Map & Snow</div>
       <div class="option-row">
+        <label>Snowfall Level</label>
+        <div class="chip-group">
+          <button class="chip snow-lvl-btn active" data-lvl="1">1. Flurries</button>
+          <button class="chip snow-lvl-btn" data-lvl="2">2. Steady</button>
+          <button class="chip snow-lvl-btn" data-lvl="3">3. Blizzard</button>
+        </div>
+      </div>
+      <div class="option-row">
         <label><span>Snow Accumulation</span><span id="accum-label">0%</span></label>
         <div style="display:flex;gap:6px;">
           <button class="btn" id="btn-clear-snow" style="flex:1;justify-content:center;">Sweep Snow</button>
@@ -442,17 +454,8 @@
   </div>
 </div>
 
-<!-- Snow Mode Floating Controls -->
-<div id="snow-controls" class="ui-panel">
-  <span style="font-weight:700;color:var(--accent-ice);font-size:12px;">❄️ Snowfall:</span>
-  <button class="chip snow-lvl-btn active" data-lvl="1">1. Flurries</button>
-  <button class="chip snow-lvl-btn" data-lvl="2">2. Steady</button>
-  <button class="chip snow-lvl-btn" data-lvl="3">3. Blizzard</button>
-  <span id="snow-accum-pill" style="font-size:11px;color:var(--text-muted);min-width:68px;text-align:center;">Depth: 0%</span>
-  <button class="btn" id="btn-snow-audio" style="padding:4px 8px;">🔇</button>
-  <button class="btn" id="btn-snow-greeting" style="padding:4px 8px;">💌 Greeting</button>
-  <button class="btn btn-gold" id="btn-exit-snow">✏️ Editor</button>
-</div>
+<!-- Snow Mode Single Lower-Left Button -->
+<button id="btn-exit-snow" class="ui-panel btn" title="Return to Editor (Esc)">✏️ Editor</button>
 
 <!-- Greeting Banner -->
 <div id="greeting-banner" class="ui-panel">
@@ -1579,7 +1582,6 @@
       const accumRates = { 1: 0.008, 2: 0.022, 3: 0.055 };
       state.snowAccum = Math.min(1, state.snowAccum + accumRates[state.snowLevel] * dt);
       const pct = Math.round(state.snowAccum * 100);
-      document.getElementById('snow-accum-pill').textContent = `Depth: ${pct}%`;
       document.getElementById('accum-label').textContent = `${pct}%`;
     }
 
@@ -2162,14 +2164,14 @@
     state.snowMode = true;
     closeAllDockDialogs();
     document.getElementById('left-dock').classList.add('hidden-editor');
-    document.getElementById('snow-controls').classList.add('visible');
+    document.getElementById('btn-exit-snow').classList.add('visible');
     if (showGreeting) showGreetingBanner();
   }
 
   function exitSnowMode() {
     state.snowMode = false;
     document.getElementById('left-dock').classList.remove('hidden-editor');
-    document.getElementById('snow-controls').classList.remove('visible');
+    document.getElementById('btn-exit-snow').classList.remove('visible');
     document.getElementById('greeting-banner').classList.remove('visible');
   }
 
@@ -2376,21 +2378,17 @@
   document.getElementById('btn-clear-snow').onclick = () => {
     state.snowAccum = 0;
     document.getElementById('accum-label').textContent = '0%';
-    document.getElementById('snow-accum-pill').textContent = 'Depth: 0%';
   };
 
   function toggleAudio() {
     state.audioEnabled = !state.audioEnabled;
     audio.setEnabled(state.audioEnabled);
     document.getElementById('btn-audio').textContent = state.audioEnabled ? '🔊' : '🔇';
-    document.getElementById('btn-snow-audio').textContent = state.audioEnabled ? '🔊' : '🔇';
   }
   document.getElementById('btn-audio').onclick = toggleAudio;
-  document.getElementById('btn-snow-audio').onclick = toggleAudio;
 
   document.getElementById('btn-snow-mode').onclick = () => enterSnowMode(false);
   document.getElementById('btn-exit-snow').onclick = exitSnowMode;
-  document.getElementById('btn-snow-greeting').onclick = showGreetingBanner;
   document.getElementById('btn-close-banner').onclick = () => {
     document.getElementById('greeting-banner').classList.remove('visible');
   };
