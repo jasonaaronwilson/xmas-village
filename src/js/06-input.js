@@ -47,7 +47,7 @@
   });
 
   window.addEventListener('mouseup', () => {
-    if (isPanning) { isPanning = false; canvas.style.cursor = spaceDown ? 'grab' : 'crosshair'; }
+    if (isPanning) { isPanning = false; canvas.style.cursor = spaceDown ? 'grab' : 'default'; }
     isPainting = false; paintUndoPushed = false;
   });
 
@@ -161,6 +161,6 @@
   });
 
   window.addEventListener('keyup', e => {
-    if (e.code === 'Space') { spaceDown = false; if (!isPanning) canvas.style.cursor = 'crosshair'; }
+    if (e.code === 'Space') { spaceDown = false; if (!isPanning) canvas.style.cursor = 'default'; }
   });
 

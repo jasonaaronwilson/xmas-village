@@ -6,11 +6,11 @@
 
 <!-- Single Left-Edge Toolbar -->
 <div id="left-dock" class="ui-panel">
+  <button class="dock-btn" id="tool-inspect" title="Inspect & Edit Existing Item (2)">🔍</button>
   <button class="dock-btn" id="btn-dock-build" title="Build Palette (B)">🏠</button>
   <button class="dock-btn" id="btn-dock-options" title="Customize Options & Atmosphere (O)">🎨</button>
   <div class="dock-sep"></div>
   <button class="dock-btn active" id="tool-place" title="Place / Paint (1)">🖌️</button>
-  <button class="dock-btn" id="tool-inspect" title="Inspect & Edit Existing Item (2)">🔍</button>
   <button class="dock-btn" id="tool-erase" title="Erase / Bulldoze (3 or Right-Click)">🧹</button>
   <button class="dock-btn" id="btn-rotate" title="Rotate Facing (R)">🔄</button>
   <div class="dock-sep"></div>
@@ -52,26 +52,6 @@
       Select a tile or building to customize.
     </div>
     <div id="config-options-container"></div>
-    <div>
-      <div class="section-title">Map & Snow</div>
-      <div class="option-row">
-        <label>Snowfall Level</label>
-        <div class="chip-group">
-          <button class="chip snow-lvl-btn active" data-lvl="1">1. Flurries</button>
-          <button class="chip snow-lvl-btn" data-lvl="2">2. Steady</button>
-          <button class="chip snow-lvl-btn" data-lvl="3">3. Blizzard</button>
-        </div>
-      </div>
-      <div class="option-row">
-        <label><span>Snow Accumulation</span><span id="accum-label">0%</span></label>
-        <div style="display:flex;gap:6px;">
-          <button class="btn" id="btn-clear-snow" style="flex:1;justify-content:center;">Sweep Snow</button>
-        </div>
-      </div>
-      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:4px;">
-        Pan: Middle-drag or Space+Drag • Zoom: Scroll • Erase: Right-click
-      </div>
-    </div>
   </div>
 </div>
 

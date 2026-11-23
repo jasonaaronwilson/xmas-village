@@ -484,10 +484,8 @@
   function clearSnow() {
     state.snowAccum = 0;
     state.snowGrid = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => 0));
-    document.getElementById('accum-label').textContent = '0%';
     audio.playClick(420);
   }
-  document.getElementById('btn-clear-snow').onclick = clearSnow;
   document.getElementById('btn-dialog-clear-snow').onclick = () => {
     clearSnow();
     closeAllDockDialogs();
@@ -510,9 +508,6 @@
   document.querySelectorAll('.snow-start-btn').forEach(btn => {
     btn.onclick = () => {
       state.snowLevel = Number(btn.dataset.lvl);
-      document.querySelectorAll('.snow-lvl-btn').forEach(b => {
-        b.classList.toggle('active', Number(b.dataset.lvl) === state.snowLevel);
-      });
       enterSnowMode(false);
     };
   });
@@ -520,14 +515,6 @@
   document.getElementById('btn-close-banner').onclick = () => {
     document.getElementById('greeting-banner').classList.remove('visible');
   };
-
-  document.querySelectorAll('.snow-lvl-btn').forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll('.snow-lvl-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.snowLevel = Number(btn.dataset.lvl);
-    };
-  });
 
   document.getElementById('btn-saves').onclick = () => { renderSaveSlots(); openModal('modal-saves'); };
   document.getElementById('btn-save-slot').onclick = () => {

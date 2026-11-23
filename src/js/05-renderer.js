@@ -131,8 +131,6 @@
         }
       }
       state.snowAccum = sumSnow / (GRID_SIZE * GRID_SIZE);
-      const pct = Math.round(state.snowAccum * 100);
-      document.getElementById('accum-label').textContent = `${pct}%`;
     }
 
     const snowBucket = Math.min(4, Math.floor(state.snowAccum * 4.99));

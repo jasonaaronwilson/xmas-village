@@ -41,7 +41,7 @@
     display: block;
     width: 100vw;
     height: 100vh;
-    cursor: crosshair;
+    cursor: default;
   }
 
   .ui-panel {
@@ -409,11 +409,11 @@
 
 <!-- Single Left-Edge Toolbar -->
 <div id="left-dock" class="ui-panel">
+  <button class="dock-btn" id="tool-inspect" title="Inspect & Edit Existing Item (2)">🔍</button>
   <button class="dock-btn" id="btn-dock-build" title="Build Palette (B)">🏠</button>
   <button class="dock-btn" id="btn-dock-options" title="Customize Options & Atmosphere (O)">🎨</button>
   <div class="dock-sep"></div>
   <button class="dock-btn active" id="tool-place" title="Place / Paint (1)">🖌️</button>
-  <button class="dock-btn" id="tool-inspect" title="Inspect & Edit Existing Item (2)">🔍</button>
   <button class="dock-btn" id="tool-erase" title="Erase / Bulldoze (3 or Right-Click)">🧹</button>
   <button class="dock-btn" id="btn-rotate" title="Rotate Facing (R)">🔄</button>
   <div class="dock-sep"></div>
@@ -455,26 +455,6 @@
       Select a tile or building to customize.
     </div>
     <div id="config-options-container"></div>
-    <div>
-      <div class="section-title">Map & Snow</div>
-      <div class="option-row">
-        <label>Snowfall Level</label>
-        <div class="chip-group">
-          <button class="chip snow-lvl-btn active" data-lvl="1">1. Flurries</button>
-          <button class="chip snow-lvl-btn" data-lvl="2">2. Steady</button>
-          <button class="chip snow-lvl-btn" data-lvl="3">3. Blizzard</button>
-        </div>
-      </div>
-      <div class="option-row">
-        <label><span>Snow Accumulation</span><span id="accum-label">0%</span></label>
-        <div style="display:flex;gap:6px;">
-          <button class="btn" id="btn-clear-snow" style="flex:1;justify-content:center;">Sweep Snow</button>
-        </div>
-      </div>
-      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:4px;">
-        Pan: Middle-drag or Space+Drag • Zoom: Scroll • Erase: Right-click
-      </div>
-    </div>
   </div>
 </div>
 
@@ -2146,8 +2126,6 @@
         }
       }
       state.snowAccum = sumSnow / (GRID_SIZE * GRID_SIZE);
-      const pct = Math.round(state.snowAccum * 100);
-      document.getElementById('accum-label').textContent = `${pct}%`;
     }
 
     const snowBucket = Math.min(4, Math.floor(state.snowAccum * 4.99));
@@ -2653,7 +2631,7 @@
   });
 
   window.addEventListener('mouseup', () => {
-    if (isPanning) { isPanning = false; canvas.style.cursor = spaceDown ? 'grab' : 'crosshair'; }
+    if (isPanning) { isPanning = false; canvas.style.cursor = spaceDown ? 'grab' : 'default'; }
     isPainting = false; paintUndoPushed = false;
   });
 
@@ -2767,7 +2745,7 @@
   });
 
   window.addEventListener('keyup', e => {
-    if (e.code === 'Space') { spaceDown = false; if (!isPanning) canvas.style.cursor = 'crosshair'; }
+    if (e.code === 'Space') { spaceDown = false; if (!isPanning) canvas.style.cursor = 'default'; }
   });
 
   // =========================================================================
@@ -3256,10 +3234,8 @@
   function clearSnow() {
     state.snowAccum = 0;
     state.snowGrid = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => 0));
-    document.getElementById('accum-label').textContent = '0%';
     audio.playClick(420);
   }
-  document.getElementById('btn-clear-snow').onclick = clearSnow;
   document.getElementById('btn-dialog-clear-snow').onclick = () => {
     clearSnow();
     closeAllDockDialogs();
@@ -3282,9 +3258,6 @@
   document.querySelectorAll('.snow-start-btn').forEach(btn => {
     btn.onclick = () => {
       state.snowLevel = Number(btn.dataset.lvl);
-      document.querySelectorAll('.snow-lvl-btn').forEach(b => {
-        b.classList.toggle('active', Number(b.dataset.lvl) === state.snowLevel);
-      });
       enterSnowMode(false);
     };
   });
@@ -3292,14 +3265,6 @@
   document.getElementById('btn-close-banner').onclick = () => {
     document.getElementById('greeting-banner').classList.remove('visible');
   };
-
-  document.querySelectorAll('.snow-lvl-btn').forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll('.snow-lvl-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.snowLevel = Number(btn.dataset.lvl);
-    };
-  });
 
   document.getElementById('btn-saves').onclick = () => { renderSaveSlots(); openModal('modal-saves'); };
   document.getElementById('btn-save-slot').onclick = () => {
