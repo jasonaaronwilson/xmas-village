@@ -4,7 +4,6 @@
   function closeAllDockDialogs() {
     document.querySelectorAll('.dock-dialog').forEach(d => d.classList.remove('open'));
     document.getElementById('btn-dock-build').classList.remove('dialog-open');
-    document.getElementById('btn-dock-options').classList.remove('dialog-open');
   }
 
   function openDockDialog(id) {
@@ -13,7 +12,6 @@
     if (!already) {
       document.getElementById(id).classList.add('open');
       if (id === 'dialog-build') document.getElementById('btn-dock-build').classList.add('dialog-open');
-      if (id === 'dialog-options') document.getElementById('btn-dock-options').classList.add('dialog-open');
     }
   }
 
@@ -450,7 +448,6 @@
   window.closeModal = id => document.getElementById(id).classList.remove('open');
 
   document.getElementById('btn-dock-build').onclick = () => toggleDockDialog('dialog-build');
-  document.getElementById('btn-dock-options').onclick = () => toggleDockDialog('dialog-options');
   document.getElementById('close-build').onclick = closeAllDockDialogs;
   document.getElementById('close-options').onclick = closeAllDockDialogs;
 
