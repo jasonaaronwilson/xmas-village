@@ -520,8 +520,8 @@
 
     pts.forEach(([dx, dy], idx) => {
       let on = true;
-      if (mode === 'twinkle') on = Math.sin(animClock * 5 + idx * 1.7 + obj.id) > -0.35;
-      else if (mode === 'chase') on = (Math.floor(animClock * 6) + idx) % 3 !== 0;
+      if (mode === 'twinkle') on = Math.sin(animClock * 1.1 + idx * 1.7 + obj.id) > -0.35;
+      else if (mode === 'chase') on = (Math.floor(animClock * 1.4) + idx) % 3 !== 0;
       if (!on) return;
       const col = cols[(idx + obj.id) % cols.length];
       const bx = cx + dx * z, by = footY + dy * z;
