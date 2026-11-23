@@ -700,59 +700,78 @@
     initEmptyMap();
     const scale = elevScale === 0 ? 0.25 : (elevScale === 1 ? 1.0 : 1.65);
     const mid = GRID_SIZE / 2;
-    const lakeCenter = GRID_SIZE * 0.70;
+    const seed = Math.random() * 10000;
+
+    // Seeded smooth 2D value noise + fractal Brownian motion for personalized landscapes
+    const vNoise = (x, y, s) => {
+      const ix = Math.floor(x), iy = Math.floor(y);
+      const fx = x - ix, fy = y - iy;
+      const ux = fx * fx * (3 - 2 * fx);
+      const uy = fy * fy * (3 - 2 * fy);
+      const h00 = hash2(ix, iy, s), h10 = hash2(ix + 1, iy, s);
+      const h01 = hash2(ix, iy + 1, s), h11 = hash2(ix + 1, iy + 1, s);
+      const nx0 = h00 + (h10 - h00) * ux;
+      const nx1 = h01 + (h11 - h01) * ux;
+      return nx0 + (nx1 - nx0) * uy;
+    };
+    const fbm = (x, y) => (
+      vNoise(x * 0.08, y * 0.08, seed) * 0.58 +
+      vNoise(x * 0.17, y * 0.17, seed + 19.3) * 0.28 +
+      vNoise(x * 0.34, y * 0.34, seed + 47.7) * 0.14
+    );
+
+    const WATER_LEVEL = 1.0;
+    const lakeCenter = GRID_SIZE * (0.67 + (Math.random() - 0.5) * 0.06);
+    const lakeShiftW = (Math.random() - 0.5) * 0.22;
 
     for (let cy = 0; cy <= GRID_SIZE; cy++) {
       for (let cx = 0; cx <= GRID_SIZE; cx++) {
-        // Depth from back of isometric diamond (0 = back peak, 2*GRID_SIZE = front)
         const backDist = (cx + cy) / (GRID_SIZE * 2);
-        const ridge = Math.sin((cx - cy) * 0.22) * 0.8 + Math.cos(cx * 0.14 + cy * 0.11) * 0.6;
-        const smallHill = Math.max(0, Math.sin(cx * 0.18) * Math.cos(cy * 0.18)) * 1.1;
-        const alongW = (cx - cy) / mid;
-        const alongD = ((cx + cy) * 0.5 - lakeCenter) / mid;
-        const shoreWobble = Math.sin(cx * 0.25) * 0.07 + Math.cos(cy * 0.29) * 0.06 + Math.sin((cx - cy) * 0.17) * 0.05;
-        const lakeDist = Math.sqrt(alongW * alongW * 0.28 + alongD * alongD * 1.35) + shoreWobble;
+        const n = fbm(cx, cy); // 0..1
+        const ridged = 1 - Math.abs(n * 2 - 1); // 0..1 sharp alpine ridges
         let h = 0;
 
         if (preset === 'victorian') {
-          // Mostly flat, gentle rim at the very back
-          if (backDist < 0.18) h = (0.18 - backDist) * 5 * scale;
+          const gentleBack = backDist < 0.22 ? ((0.22 - backDist) / 0.22) * (1.2 + n * 1.4) : 0;
+          h = (gentleBack + Math.max(0, n - 0.62) * 1.2) * scale;
         } else if (preset === 'swiss') {
-          // Dramatic ridged Swiss alpine peaks in the back + varied hills & knolls
-          const sharpPeak = (1 - Math.abs(Math.sin((cx - cy) * 0.23))) * 2.4 + Math.max(0, ridge) * 1.4;
-          const sideKnolls = Math.max(0, Math.sin(cx * 0.16 + 0.8) * Math.cos(cy * 0.15)) * 2.2;
-          if (backDist < 0.48) {
-            const t = (0.48 - backDist) / 0.48;
-            h = (t * t * 6.2 + sharpPeak * t * 1.35 + sideKnolls * 0.5) * scale;
-          } else {
-            h = (smallHill * 1.15 + sideKnolls * 0.85) * scale;
-          }
+          const backT = backDist < 0.50 ? (0.50 - backDist) / 0.50 : 0;
+          const peaks = backT * backT * 5.8 + ridged * backT * 4.5;
+          const villageHills = Math.max(0, n - 0.42) * 3.8;
+          h = (peaks + villageHills) * scale;
         } else if (preset === 'foothills') {
-          const backRise = backDist < 0.36 ? ((0.36 - backDist) / 0.36) * 4.2 : 0;
-          h = (backRise + smallHill * 1.6 + Math.max(0, ridge * 0.7)) * scale;
+          const backRise = backDist < 0.38 ? ((0.38 - backDist) / 0.38) * (3.2 + ridged * 2.0) : 0;
+          h = (backRise + Math.max(0, n - 0.35) * 3.4) * scale;
         } else if (preset === 'lake') {
-          if (lakeDist < 0.54) {
-            h = 0;
-          } else {
-            const bank = Math.min(2.0, (lakeDist - 0.54) * 3.2);
-            const backRise = backDist < 0.40 ? ((0.40 - backDist) / 0.40) * 5.6 : 0;
-            h = (bank * 0.65 + backRise + (backDist < 0.45 ? Math.max(0, ridge * 0.9) : 0)) * scale;
-          }
+          const alongW = (cx - cy) / mid - lakeShiftW;
+          const alongD = ((cx + cy) * 0.5 - lakeCenter) / mid;
+          const basinDist = Math.sqrt(alongW * alongW * 0.26 + alongD * alongD * 1.25) + (n - 0.5) * 0.32;
+          const backRise = backDist < 0.42 ? ((0.42 - backDist) / 0.42) * (4.6 + ridged * 2.8) : 0;
+          const landH = 0.7 + backRise * scale + Math.max(0, n - 0.35) * 2.6 * scale;
+          // Carve a natural basin below WATER_LEVEL in the foreground
+          h = basinDist < 0.56 ? (basinDist / 0.56) * WATER_LEVEL * 0.92 : landH + (basinDist - 0.56) * 1.2;
         }
 
         state.corners[cy][cx] = Math.max(0, Math.min(12, Math.round(h * 2) / 2));
       }
     }
 
+    // Real water-level pass: water fills everything at or below WATER_LEVEL to one flat plane
     if (preset === 'lake') {
+      for (let cy = 0; cy <= GRID_SIZE; cy++) {
+        for (let cx = 0; cx <= GRID_SIZE; cx++) {
+          if (state.corners[cy][cx] <= WATER_LEVEL) {
+            state.corners[cy][cx] = WATER_LEVEL;
+          }
+        }
+      }
       for (let y = 0; y < GRID_SIZE; y++) {
         for (let x = 0; x < GRID_SIZE; x++) {
-          const tx = x + 0.5, ty = y + 0.5;
-          const alongW = (tx - ty) / mid;
-          const alongD = ((tx + ty) * 0.5 - lakeCenter) / mid;
-          const shoreWobble = Math.sin(tx * 0.25) * 0.07 + Math.cos(ty * 0.29) * 0.06 + Math.sin((tx - ty) * 0.17) * 0.05;
-          const lakeDist = Math.sqrt(alongW * alongW * 0.28 + alongD * alongD * 1.35) + shoreWobble;
-          if (lakeDist < 0.53) {
+          const c0 = state.corners[y][x];
+          const c1 = state.corners[y][x + 1];
+          const c2 = state.corners[y + 1][x + 1];
+          const c3 = state.corners[y + 1][x];
+          if (c0 <= WATER_LEVEL && c1 <= WATER_LEVEL && c2 <= WATER_LEVEL && c3 <= WATER_LEVEL) {
             state.terrain[y][x] = 'ice';
           }
         }
