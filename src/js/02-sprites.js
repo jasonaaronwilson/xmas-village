@@ -35,7 +35,8 @@
 
   // Vector Terrain Tiles
   function getTerrainSprite(type, tx, ty, snowBucket) {
-    const variant = ((tx * 7 + ty * 13) & 3);
+    const isLakeTile = (type === 'ice' || type === 'ice_cracked' || type === 'water');
+    const variant = isLakeTile ? ((tx * 11 + ty * 23) & 15) : ((tx * 7 + ty * 13) & 3);
     const key = `vt_${type}_${variant}_${snowBucket}`;
     if (spriteCache.has(key)) return spriteCache.get(key);
 
@@ -44,10 +45,10 @@
 
     if (type === 'grass' || type === 'shrub') {
       const shades = [
-        ['#5c8f46', '#4a7a37'],
-        ['#53853f', '#426f30'],
-        ['#62964b', '#4e803a'],
-        ['#578a43', '#457433'],
+        ['#568a42', '#4d803b'],
+        ['#548840', '#4b7e39'],
+        ['#588c44', '#4f823c'],
+        ['#558941', '#4c7f3a'],
       ];
       const [gTop, gBot] = shades[variant];
       const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
@@ -152,21 +153,86 @@
         ctx.ellipse(rx, ry, 2.2, 1.2, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-    } else if (type === 'ice') {
-      const grad = ctx.createRadialGradient(cx - 4, cy - 2, 2, cx, cy, 46);
-      grad.addColorStop(0, '#7dd3fc');
-      grad.addColorStop(0.65, '#38bdf8');
-      grad.addColorStop(1, '#22a7e5');
-      drawIsoDiamond(ctx, cx, cy, TILE_W + 0.8, TILE_H + 0.4, grad, 'rgba(186, 230, 253, 0.25)', 0.6);
-      // Smooth specular ice shine
-      ctx.strokeStyle = 'rgba(240, 249, 255, 0.55)';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(cx - 14, cy - 3);
-      ctx.quadraticCurveTo(cx - 4, cy - 6, cx + 6, cy - 2);
-      ctx.moveTo(cx - 4, cy + 5);
-      ctx.quadraticCurveTo(cx + 8, cy + 2, cx + 16, cy + 5);
-      ctx.stroke();
+    } else if (type === 'ice' || type === 'ice_cracked') {
+      // Unified seamless glacial blue base (no per-tile checkerboard)
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, '#3ca7db');
+      grad.addColorStop(1, '#369fd3');
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 1.2, TILE_H + 0.6, grad, null);
+
+      ctx.save();
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, null, null);
+      ctx.clip();
+
+      // Subtle translucent mist/depth variation (soft, no diamond edges)
+      if (variant % 2 === 0) {
+        const px = cx + (hash2(variant, 1, 3) - 0.5) * 24;
+        const py = cy + (hash2(variant, 2, 4) - 0.5) * 10;
+        ctx.fillStyle = variant % 4 === 0 ? 'rgba(186, 230, 253, 0.12)' : 'rgba(12, 74, 110, 0.08)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, 12, 5, (hash2(variant, 3, 5) - 0.5) * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Tiny trapped air bubbles & frost specks across the ice (dots only, no lines)
+      const speckCount = 8 + (variant % 6);
+      for (let i = 0; i < speckCount; i++) {
+        const bx = cx + (hash2(variant, i, 21) - 0.5) * 44;
+        const by = cy + (hash2(variant, i, 22) - 0.5) * 18;
+        const br = 0.35 + hash2(variant, i, 23) * 0.55;
+        ctx.fillStyle = i % 3 === 0 ? 'rgba(240, 249, 255, 0.48)' : 'rgba(186, 230, 253, 0.36)';
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Extra subtle frost-dot clusters for ice_cracked (dots only, no lines/lambdas)
+      if (type === 'ice_cracked') {
+        for (let i = 0; i < 6; i++) {
+          const bx = cx + (hash2(variant, i, 41) - 0.5) * 34;
+          const by = cy + (hash2(variant, i, 42) - 0.5) * 14;
+          ctx.fillStyle = 'rgba(240, 249, 255, 0.58)';
+          ctx.beginPath();
+          ctx.arc(bx, by, 0.45 + hash2(variant, i, 43) * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    } else if (type === 'water') {
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, '#1c77ab');
+      grad.addColorStop(1, '#176c9c');
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 1.2, TILE_H + 0.6, grad, null);
+
+      for (let i = 0; i < 4; i++) {
+        const rx = cx + (hash2(variant, i, 11) - 0.5) * 32;
+        const ry = cy + (hash2(variant, i, 12) - 0.5) * 14;
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.30)';
+        ctx.beginPath();
+        ctx.arc(rx, ry, 0.55, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (type === 'pier') {
+      // Water underneath
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 1.0, TILE_H + 0.5, '#136ea1', null);
+      // Timber dock planks
+      drawIsoDiamond(ctx, cx, cy - 2, TILE_W - 14, TILE_H - 7, '#78350f', '#451a03', 1);
+      ctx.save();
+      drawIsoDiamond(ctx, cx, cy - 2, TILE_W - 15, TILE_H - 8, null, null);
+      ctx.clip();
+      for (let py = 3; py < TILE_H; py += 4.5) {
+        ctx.fillStyle = py % 9 === 0 ? '#92400e' : '#6c320d';
+        ctx.fillRect(0, py, TILE_W, 3.5);
+      }
+      ctx.restore();
+      // Corner wooden pilings with snow caps
+      const posts = [[cx, 7], [cx - 24, cy - 2], [cx + 24, cy - 2], [cx, TILE_H - 11]];
+      for (const [px, py] of posts) {
+        ctx.fillStyle = '#451a03';
+        ctx.beginPath(); ctx.roundRect(px - 2, py - 4, 4, 7, 1); ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath(); ctx.ellipse(px, py - 4, 2.2, 1, 0, 0, Math.PI * 2); ctx.fill();
+      }
     } else if (type === 'plaza') {
       drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#78350f', '#451a03', 1);
       ctx.save();

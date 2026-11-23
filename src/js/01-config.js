@@ -43,7 +43,10 @@
     { id: 'snow',       cat: 'terrain',   name: 'Snowy Meadow',     type: 'terrain', desc: 'Soft drifting winter snowfield.' },
     { id: 'road',       cat: 'terrain',   name: 'Cobble Street',    type: 'terrain', desc: 'Rounded cobblestone street with snow curbs.' },
     { id: 'path',       cat: 'terrain',   name: 'Footpath',         type: 'terrain', desc: 'Winding stone-dusted walkway.' },
-    { id: 'ice',        cat: 'terrain',   name: 'Frozen Pond',      type: 'terrain', desc: 'Smooth reflective winter ice.' },
+    { id: 'ice',        cat: 'terrain',   name: 'Frozen Lake',      type: 'terrain', desc: 'Seamless glacial winter ice.' },
+    { id: 'ice_cracked',cat: 'terrain',   name: 'Skating & Cracks', type: 'terrain', desc: 'Ice with natural frost cracks & skate marks.' },
+    { id: 'water',      cat: 'terrain',   name: 'Winter Water',     type: 'terrain', desc: 'Deep dark unfrozen lake water.' },
+    { id: 'pier',       cat: 'terrain',   name: 'Wooden Pier',      type: 'terrain', desc: 'Cozy timber dock extending over water.' },
     { id: 'plaza',      cat: 'terrain',   name: 'Timber Plaza',     type: 'terrain', desc: 'Warm wooden town square decking.' },
     { id: 'elev_up',    cat: 'terrain',   name: 'Raise Hill',       type: 'elev', delta: 1, desc: 'Raise terrain elevation by 1 level.' },
     { id: 'elev_down',  cat: 'terrain',   name: 'Lower Ground',     type: 'elev', delta: -1, desc: 'Lower terrain elevation by 1 level.' },
@@ -200,7 +203,10 @@
           const c2 = state.corners[y + 1][x + 1];
           const c3 = state.corners[y + 1][x];
           if (c0 <= WATER_LEVEL && c1 <= WATER_LEVEL && c2 <= WATER_LEVEL && c3 <= WATER_LEVEL) {
-            state.terrain[y][x] = 'ice';
+            const wNoise = fbm(x + 31.7, y + 17.3);
+            if (wNoise > 0.72) state.terrain[y][x] = 'water';
+            else if (wNoise > 0.48) state.terrain[y][x] = 'ice_cracked';
+            else state.terrain[y][x] = 'ice';
           }
         }
       }

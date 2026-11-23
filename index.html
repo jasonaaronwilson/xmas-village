@@ -639,7 +639,10 @@
     { id: 'snow',       cat: 'terrain',   name: 'Snowy Meadow',     type: 'terrain', desc: 'Soft drifting winter snowfield.' },
     { id: 'road',       cat: 'terrain',   name: 'Cobble Street',    type: 'terrain', desc: 'Rounded cobblestone street with snow curbs.' },
     { id: 'path',       cat: 'terrain',   name: 'Footpath',         type: 'terrain', desc: 'Winding stone-dusted walkway.' },
-    { id: 'ice',        cat: 'terrain',   name: 'Frozen Pond',      type: 'terrain', desc: 'Smooth reflective winter ice.' },
+    { id: 'ice',        cat: 'terrain',   name: 'Frozen Lake',      type: 'terrain', desc: 'Seamless glacial winter ice.' },
+    { id: 'ice_cracked',cat: 'terrain',   name: 'Skating & Cracks', type: 'terrain', desc: 'Ice with natural frost cracks & skate marks.' },
+    { id: 'water',      cat: 'terrain',   name: 'Winter Water',     type: 'terrain', desc: 'Deep dark unfrozen lake water.' },
+    { id: 'pier',       cat: 'terrain',   name: 'Wooden Pier',      type: 'terrain', desc: 'Cozy timber dock extending over water.' },
     { id: 'plaza',      cat: 'terrain',   name: 'Timber Plaza',     type: 'terrain', desc: 'Warm wooden town square decking.' },
     { id: 'elev_up',    cat: 'terrain',   name: 'Raise Hill',       type: 'elev', delta: 1, desc: 'Raise terrain elevation by 1 level.' },
     { id: 'elev_down',  cat: 'terrain',   name: 'Lower Ground',     type: 'elev', delta: -1, desc: 'Lower terrain elevation by 1 level.' },
@@ -796,7 +799,10 @@
           const c2 = state.corners[y + 1][x + 1];
           const c3 = state.corners[y + 1][x];
           if (c0 <= WATER_LEVEL && c1 <= WATER_LEVEL && c2 <= WATER_LEVEL && c3 <= WATER_LEVEL) {
-            state.terrain[y][x] = 'ice';
+            const wNoise = fbm(x + 31.7, y + 17.3);
+            if (wNoise > 0.72) state.terrain[y][x] = 'water';
+            else if (wNoise > 0.48) state.terrain[y][x] = 'ice_cracked';
+            else state.terrain[y][x] = 'ice';
           }
         }
       }
@@ -840,7 +846,8 @@
 
   // Vector Terrain Tiles
   function getTerrainSprite(type, tx, ty, snowBucket) {
-    const variant = ((tx * 7 + ty * 13) & 3);
+    const isLakeTile = (type === 'ice' || type === 'ice_cracked' || type === 'water');
+    const variant = isLakeTile ? ((tx * 11 + ty * 23) & 15) : ((tx * 7 + ty * 13) & 3);
     const key = `vt_${type}_${variant}_${snowBucket}`;
     if (spriteCache.has(key)) return spriteCache.get(key);
 
@@ -849,10 +856,10 @@
 
     if (type === 'grass' || type === 'shrub') {
       const shades = [
-        ['#5c8f46', '#4a7a37'],
-        ['#53853f', '#426f30'],
-        ['#62964b', '#4e803a'],
-        ['#578a43', '#457433'],
+        ['#568a42', '#4d803b'],
+        ['#548840', '#4b7e39'],
+        ['#588c44', '#4f823c'],
+        ['#558941', '#4c7f3a'],
       ];
       const [gTop, gBot] = shades[variant];
       const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
@@ -957,21 +964,86 @@
         ctx.ellipse(rx, ry, 2.2, 1.2, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-    } else if (type === 'ice') {
-      const grad = ctx.createRadialGradient(cx - 4, cy - 2, 2, cx, cy, 46);
-      grad.addColorStop(0, '#7dd3fc');
-      grad.addColorStop(0.65, '#38bdf8');
-      grad.addColorStop(1, '#22a7e5');
-      drawIsoDiamond(ctx, cx, cy, TILE_W + 0.8, TILE_H + 0.4, grad, 'rgba(186, 230, 253, 0.25)', 0.6);
-      // Smooth specular ice shine
-      ctx.strokeStyle = 'rgba(240, 249, 255, 0.55)';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(cx - 14, cy - 3);
-      ctx.quadraticCurveTo(cx - 4, cy - 6, cx + 6, cy - 2);
-      ctx.moveTo(cx - 4, cy + 5);
-      ctx.quadraticCurveTo(cx + 8, cy + 2, cx + 16, cy + 5);
-      ctx.stroke();
+    } else if (type === 'ice' || type === 'ice_cracked') {
+      // Unified seamless glacial blue base (no per-tile checkerboard)
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, '#3ca7db');
+      grad.addColorStop(1, '#369fd3');
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 1.2, TILE_H + 0.6, grad, null);
+
+      ctx.save();
+      drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, null, null);
+      ctx.clip();
+
+      // Subtle translucent mist/depth variation (soft, no diamond edges)
+      if (variant % 2 === 0) {
+        const px = cx + (hash2(variant, 1, 3) - 0.5) * 24;
+        const py = cy + (hash2(variant, 2, 4) - 0.5) * 10;
+        ctx.fillStyle = variant % 4 === 0 ? 'rgba(186, 230, 253, 0.12)' : 'rgba(12, 74, 110, 0.08)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, 12, 5, (hash2(variant, 3, 5) - 0.5) * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Tiny trapped air bubbles & frost specks across the ice (dots only, no lines)
+      const speckCount = 8 + (variant % 6);
+      for (let i = 0; i < speckCount; i++) {
+        const bx = cx + (hash2(variant, i, 21) - 0.5) * 44;
+        const by = cy + (hash2(variant, i, 22) - 0.5) * 18;
+        const br = 0.35 + hash2(variant, i, 23) * 0.55;
+        ctx.fillStyle = i % 3 === 0 ? 'rgba(240, 249, 255, 0.48)' : 'rgba(186, 230, 253, 0.36)';
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Extra subtle frost-dot clusters for ice_cracked (dots only, no lines/lambdas)
+      if (type === 'ice_cracked') {
+        for (let i = 0; i < 6; i++) {
+          const bx = cx + (hash2(variant, i, 41) - 0.5) * 34;
+          const by = cy + (hash2(variant, i, 42) - 0.5) * 14;
+          ctx.fillStyle = 'rgba(240, 249, 255, 0.58)';
+          ctx.beginPath();
+          ctx.arc(bx, by, 0.45 + hash2(variant, i, 43) * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    } else if (type === 'water') {
+      const grad = ctx.createLinearGradient(0, 0, TILE_W, TILE_H);
+      grad.addColorStop(0, '#1c77ab');
+      grad.addColorStop(1, '#176c9c');
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 1.2, TILE_H + 0.6, grad, null);
+
+      for (let i = 0; i < 4; i++) {
+        const rx = cx + (hash2(variant, i, 11) - 0.5) * 32;
+        const ry = cy + (hash2(variant, i, 12) - 0.5) * 14;
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.30)';
+        ctx.beginPath();
+        ctx.arc(rx, ry, 0.55, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (type === 'pier') {
+      // Water underneath
+      drawIsoDiamond(ctx, cx, cy, TILE_W + 1.0, TILE_H + 0.5, '#136ea1', null);
+      // Timber dock planks
+      drawIsoDiamond(ctx, cx, cy - 2, TILE_W - 14, TILE_H - 7, '#78350f', '#451a03', 1);
+      ctx.save();
+      drawIsoDiamond(ctx, cx, cy - 2, TILE_W - 15, TILE_H - 8, null, null);
+      ctx.clip();
+      for (let py = 3; py < TILE_H; py += 4.5) {
+        ctx.fillStyle = py % 9 === 0 ? '#92400e' : '#6c320d';
+        ctx.fillRect(0, py, TILE_W, 3.5);
+      }
+      ctx.restore();
+      // Corner wooden pilings with snow caps
+      const posts = [[cx, 7], [cx - 24, cy - 2], [cx + 24, cy - 2], [cx, TILE_H - 11]];
+      for (const [px, py] of posts) {
+        ctx.fillStyle = '#451a03';
+        ctx.beginPath(); ctx.roundRect(px - 2, py - 4, 4, 7, 1); ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath(); ctx.ellipse(px, py - 4, 2.2, 1, 0, 0, Math.PI * 2); ctx.fill();
+      }
     } else if (type === 'plaza') {
       drawIsoDiamond(ctx, cx, cy, TILE_W, TILE_H, '#78350f', '#451a03', 1);
       ctx.save();
@@ -1869,7 +1941,8 @@
           const w = state.corners[gy + 1]?.[gx] || 0;
           // Leeward pockets & sheltered slopes catch more drifting snow
           const leeward = Math.max(0.55, Math.min(1.55, 1.0 + (n - s) * 0.18 + (w - e) * 0.12));
-          const typeFactor = tType === 'ice' ? 0.38 : (tType === 'road' ? 0.85 : 1.0);
+          const isLake = (tType === 'ice' || tType === 'ice_cracked' || tType === 'water');
+          const typeFactor = tType === 'water' ? 0.1 : (isLake ? 0.38 : (tType === 'road' ? 0.85 : 1.0));
           let maxCap = 1.0;
 
           // Warmth from hearths & lamps keeps a cozy melted/light-frost ring
@@ -1978,6 +2051,17 @@
               } else {
                 fillCol = '#deecfb'; strokeCol = '#b4cde6';
               }
+            } else if (avgH > 3.2) {
+              // Smooth alpine treeline/frost transition
+              if (steep > 1.5 && slopeLight < -0.45) {
+                fillCol = '#78889c'; strokeCol = '#5a6a7e';
+              } else if (slopeLight > 0.35) {
+                fillCol = '#a3bf9d'; strokeCol = '#7a9976';
+              } else if (slopeLight < -0.25) {
+                fillCol = '#6d8773'; strokeCol = '#526b59';
+              } else {
+                fillCol = '#8aa88b'; strokeCol = '#68856b';
+              }
             } else {
               // Lush green sloped hills (gradually frosted as snowBucket rises)
               if (steep > 1.6 && slopeLight < -0.5) {
@@ -2024,9 +2108,10 @@
         }
 
         // Realistic per-tile snow accumulation & drifts
+        const isLake = (tType === 'ice' || tType === 'ice_cracked' || tType === 'water' || tType === 'pier');
         const localSnow = state.snowGrid[gy]?.[gx] ?? state.snowAccum;
-        if (localSnow > 0.03 && tType !== 'snow') {
-          const snowAlpha = tType === 'ice'
+        if (localSnow > 0.03 && tType !== 'snow' && tType !== 'water') {
+          const snowAlpha = (tType === 'ice' || tType === 'ice_cracked')
             ? Math.min(0.42, localSnow * 0.45)
             : Math.min(0.94, localSnow * 1.05);
           ctx.beginPath();
@@ -2038,7 +2123,7 @@
           ctx.fillStyle = `rgba(238, 246, 255, ${snowAlpha.toFixed(2)})`;
           ctx.fill();
 
-          if (localSnow > 0.25 && tType !== 'ice') {
+          if (localSnow > 0.25 && !isLake) {
             const cX = (pN.x + pE.x + pS.x + pW.x) * 0.25;
             const cY = (pN.y + pE.y + pS.y + pW.y) * 0.25;
             ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.65, (localSnow - 0.2) * 0.8).toFixed(2)})`;
@@ -2048,7 +2133,7 @@
           }
         }
 
-        if (tType === 'ice') {
+        if (isLake) {
           drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket);
         }
       }
@@ -2209,7 +2294,11 @@
   }
 
   function drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket = 0) {
-    const isIce = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE && state.terrain[y][x] === 'ice';
+    const isIce = (x, y) => {
+      if (x < 0 || y < 0 || x >= GRID_SIZE || y >= GRID_SIZE) return false;
+      const t = state.terrain[y][x];
+      return t === 'ice' || t === 'ice_cracked' || t === 'water' || t === 'pier';
+    };
     const nLand = !isIce(gx, gy - 1);
     const eLand = !isIce(gx + 1, gy);
     const sLand = !isIce(gx, gy + 1);

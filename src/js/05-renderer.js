@@ -74,7 +74,8 @@
           const w = state.corners[gy + 1]?.[gx] || 0;
           // Leeward pockets & sheltered slopes catch more drifting snow
           const leeward = Math.max(0.55, Math.min(1.55, 1.0 + (n - s) * 0.18 + (w - e) * 0.12));
-          const typeFactor = tType === 'ice' ? 0.38 : (tType === 'road' ? 0.85 : 1.0);
+          const isLake = (tType === 'ice' || tType === 'ice_cracked' || tType === 'water');
+          const typeFactor = tType === 'water' ? 0.1 : (isLake ? 0.38 : (tType === 'road' ? 0.85 : 1.0));
           let maxCap = 1.0;
 
           // Warmth from hearths & lamps keeps a cozy melted/light-frost ring
@@ -183,6 +184,17 @@
               } else {
                 fillCol = '#deecfb'; strokeCol = '#b4cde6';
               }
+            } else if (avgH > 3.2) {
+              // Smooth alpine treeline/frost transition
+              if (steep > 1.5 && slopeLight < -0.45) {
+                fillCol = '#78889c'; strokeCol = '#5a6a7e';
+              } else if (slopeLight > 0.35) {
+                fillCol = '#a3bf9d'; strokeCol = '#7a9976';
+              } else if (slopeLight < -0.25) {
+                fillCol = '#6d8773'; strokeCol = '#526b59';
+              } else {
+                fillCol = '#8aa88b'; strokeCol = '#68856b';
+              }
             } else {
               // Lush green sloped hills (gradually frosted as snowBucket rises)
               if (steep > 1.6 && slopeLight < -0.5) {
@@ -229,9 +241,10 @@
         }
 
         // Realistic per-tile snow accumulation & drifts
+        const isLake = (tType === 'ice' || tType === 'ice_cracked' || tType === 'water' || tType === 'pier');
         const localSnow = state.snowGrid[gy]?.[gx] ?? state.snowAccum;
-        if (localSnow > 0.03 && tType !== 'snow') {
-          const snowAlpha = tType === 'ice'
+        if (localSnow > 0.03 && tType !== 'snow' && tType !== 'water') {
+          const snowAlpha = (tType === 'ice' || tType === 'ice_cracked')
             ? Math.min(0.42, localSnow * 0.45)
             : Math.min(0.94, localSnow * 1.05);
           ctx.beginPath();
@@ -243,7 +256,7 @@
           ctx.fillStyle = `rgba(238, 246, 255, ${snowAlpha.toFixed(2)})`;
           ctx.fill();
 
-          if (localSnow > 0.25 && tType !== 'ice') {
+          if (localSnow > 0.25 && !isLake) {
             const cX = (pN.x + pE.x + pS.x + pW.x) * 0.25;
             const cY = (pN.y + pE.y + pS.y + pW.y) * 0.25;
             ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.65, (localSnow - 0.2) * 0.8).toFixed(2)})`;
@@ -253,7 +266,7 @@
           }
         }
 
-        if (tType === 'ice') {
+        if (isLake) {
           drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket);
         }
       }
@@ -414,7 +427,11 @@
   }
 
   function drawSmoothLakeShore(ctx, gx, gy, pN, pE, pS, pW, z, snowBucket = 0) {
-    const isIce = (x, y) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE && state.terrain[y][x] === 'ice';
+    const isIce = (x, y) => {
+      if (x < 0 || y < 0 || x >= GRID_SIZE || y >= GRID_SIZE) return false;
+      const t = state.terrain[y][x];
+      return t === 'ice' || t === 'ice_cracked' || t === 'water' || t === 'pier';
+    };
     const nLand = !isIce(gx, gy - 1);
     const eLand = !isIce(gx + 1, gy);
     const sLand = !isIce(gx, gy + 1);
