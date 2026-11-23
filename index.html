@@ -528,9 +528,9 @@
   'use strict';
 
   // =========================================================================
-  // 1. CONSTANTS & MAP CONFIGURATION (48x48 spacious design area)
+  // 1. CONSTANTS & MAP CONFIGURATION (60x60 spacious design area)
   // =========================================================================
-  const GRID_SIZE = 48;
+  const GRID_SIZE = 60;
   const TILE_W = 80;
   const TILE_H = 40;
   const SPRITE_SS = 2; // 2x supersampled vector sprites for razor-sharp anti-aliasing
@@ -614,7 +614,7 @@
       horseColor: 'white',
     },
     inspectedObjId: null,
-    camera: { x: 0, y: 0, zoom: 1.5 },
+    camera: { x: 0, y: 0, zoom: 1 },
     hoverTile: null,
     snowMode: false,
     snowLevel: 1,
@@ -1866,9 +1866,9 @@
     isPainting = false; paintUndoPushed = false;
   });
 
-  const ZOOM_LEVELS = [0.75, 1, 1.5, 2, 3];
+  const ZOOM_LEVELS = [0.4, 0.5, 0.75, 1, 1.5, 2, 3];
   function setZoom(nextZoom, pivotX = viewW / 2, pivotY = viewH / 2) {
-    const clamped = Math.max(0.75, Math.min(3, nextZoom));
+    const clamped = Math.max(0.4, Math.min(3, nextZoom));
     if (clamped === state.camera.zoom) return;
     const ratio = clamped / state.camera.zoom;
     state.camera.x = pivotX - (pivotX - state.camera.x) * ratio;
@@ -1879,7 +1879,7 @@
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
-    const cur = idx === -1 ? 2 : idx;
+    const cur = idx === -1 ? 3 : idx;
     const nextIdx = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, cur + (e.deltaY < 0 ? 1 : -1)));
     setZoom(ZOOM_LEVELS[nextIdx], e.clientX, e.clientY);
   }, { passive: false });
@@ -2265,7 +2265,7 @@
 
   function buildSampleVillage() {
     initEmptyMap();
-    const mid = 24;
+    const mid = Math.floor(GRID_SIZE / 2);
     for (let i = mid - 10; i <= mid + 10; i++) {
       state.terrain[mid - 1][i] = 'road';
       state.terrain[mid][i] = 'road';
@@ -2370,11 +2370,11 @@
   document.getElementById('btn-redo').onclick = redo;
   document.getElementById('btn-zoom-in').onclick = () => {
     const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
-    setZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, (idx === -1 ? 2 : idx) + 1)]);
+    setZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, (idx === -1 ? 3 : idx) + 1)]);
   };
   document.getElementById('btn-zoom-out').onclick = () => {
     const idx = ZOOM_LEVELS.indexOf(state.camera.zoom);
-    setZoom(ZOOM_LEVELS[Math.max(0, (idx === -1 ? 2 : idx) - 1)]);
+    setZoom(ZOOM_LEVELS[Math.max(0, (idx === -1 ? 3 : idx) - 1)]);
   };
   document.getElementById('btn-center-cam').onclick = centerCamera;
   document.getElementById('btn-dialog-center').onclick = centerCamera;
