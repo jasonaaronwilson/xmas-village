@@ -44,6 +44,9 @@
   }
 
   function renderPalette() {
+    document.querySelectorAll('.cat-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.cat === state.selectedCat);
+    });
     const grid = document.getElementById('item-grid');
     grid.innerHTML = '';
     const items = CATALOG.filter(c => c.cat === state.selectedCat);

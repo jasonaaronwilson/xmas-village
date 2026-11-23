@@ -412,8 +412,8 @@
     <button class="btn" id="close-build" style="padding:2px 7px;">✕</button>
   </div>
   <div class="cat-tabs" id="cat-tabs">
-    <div class="cat-tab active" data-cat="terrain">Terrain</div>
-    <div class="cat-tab" data-cat="buildings">Buildings</div>
+    <div class="cat-tab" data-cat="terrain">Terrain</div>
+    <div class="cat-tab active" data-cat="buildings">Buildings</div>
     <div class="cat-tab" data-cat="decor">Decor</div>
     <div class="cat-tab" data-cat="living">Living</div>
   </div>
@@ -2611,6 +2611,9 @@
   }
 
   function renderPalette() {
+    document.querySelectorAll('.cat-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.cat === state.selectedCat);
+    });
     const grid = document.getElementById('item-grid');
     grid.innerHTML = '';
     const items = CATALOG.filter(c => c.cat === state.selectedCat);
