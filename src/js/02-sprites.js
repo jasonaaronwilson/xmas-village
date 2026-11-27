@@ -440,6 +440,21 @@
     ctx.fill();
   }
 
+  let svgCottageImg = null;
+  let svgCottageReady = false;
+  function getSvgCottageImg() {
+    if (!svgCottageImg && typeof SVG_COTTAGE_URI !== 'undefined') {
+      svgCottageImg = new Image();
+      svgCottageImg.onload = () => {
+        svgCottageReady = true;
+        spriteCache.clear();
+        if (typeof renderPalette === 'function') renderPalette();
+      };
+      svgCottageImg.src = SVG_COTTAGE_URI;
+    }
+    return svgCottageImg;
+  }
+
   // Vector Object Sprites
   function getObjectSprite(obj, snowBucket) {
     const key = `vo_${obj.type}_${obj.color}_${obj.fireplace ? 1 : 0}_${obj.flip ? 1 : 0}_${obj.horseColor || 'w'}_${snowBucket}`;
@@ -460,6 +475,23 @@
     ctx.beginPath();
     ctx.ellipse(cx, by - (isBig ? 18 : 9), isBig ? 46 : 20, isBig ? 22 : 10, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (obj.type === 'cottage_svg') {
+      const img = getSvgCottageImg();
+      if (img && svgCottageReady) {
+        if (obj.flip) {
+          ctx.save();
+          ctx.translate(W, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(img, 14, 2, 132, 122);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, 14, 2, 132, 122);
+        }
+        spriteCache.set(key, c);
+      }
+      return c;
+    }
 
     if (obj.type === 'cottage') {
       drawVectorBox(ctx, cx, by, 24, 12, 22, pal.wall, pal.wallShade, null);
