@@ -440,19 +440,35 @@
     ctx.fill();
   }
 
-  let svgCottageImg = null;
-  let svgCottageReady = false;
-  function getSvgCottageImg() {
-    if (!svgCottageImg && typeof SVG_COTTAGE_URI !== 'undefined') {
-      svgCottageImg = new Image();
-      svgCottageImg.onload = () => {
-        svgCottageReady = true;
+  const svgAssetStore = {};
+  function getSvgAsset(name, uri) {
+    if (!svgAssetStore[name] && uri) {
+      const entry = { img: new Image(), ready: false };
+      entry.img.onload = () => {
+        entry.ready = true;
         spriteCache.clear();
         if (typeof renderPalette === 'function') renderPalette();
       };
-      svgCottageImg.src = SVG_COTTAGE_URI;
+      entry.img.src = uri;
+      svgAssetStore[name] = entry;
     }
-    return svgCottageImg;
+    return svgAssetStore[name];
+  }
+
+  function drawSvgAsset(ctx, c, key, W, entry, dx, dy, dw, dh, flip) {
+    if (entry && entry.ready) {
+      if (flip) {
+        ctx.save();
+        ctx.translate(W, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(entry.img, dx, dy, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(entry.img, dx, dy, dw, dh);
+      }
+      spriteCache.set(key, c);
+    }
+    return c;
   }
 
   // Vector Object Sprites
@@ -477,20 +493,12 @@
     ctx.fill();
 
     if (obj.type === 'cottage_svg') {
-      const img = getSvgCottageImg();
-      if (img && svgCottageReady) {
-        if (obj.flip) {
-          ctx.save();
-          ctx.translate(W, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(img, 14, 2, 132, 122);
-          ctx.restore();
-        } else {
-          ctx.drawImage(img, 14, 2, 132, 122);
-        }
-        spriteCache.set(key, c);
-      }
-      return c;
+      const entry = getSvgAsset('cottage_svg', typeof SVG_COTTAGE_URI !== 'undefined' ? SVG_COTTAGE_URI : null);
+      return drawSvgAsset(ctx, c, key, W, entry, 14, 2, 132, 122, obj.flip);
+    }
+    if (obj.type === 'bakery') {
+      const entry = getSvgAsset('bakery', typeof SVG_BAKERY_URI !== 'undefined' ? SVG_BAKERY_URI : null);
+      return drawSvgAsset(ctx, c, key, W, entry, 4, 10, 72, 78, obj.flip);
     }
 
     if (obj.type === 'cottage') {
@@ -523,23 +531,6 @@
       ctx.fillRect(cx + 12, by - 53, 3, 16);
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath(); ctx.ellipse(cx + 11.5, by - 53.5, 5, 1.8 + snowThick * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-    }
-    else if (obj.type === 'bakery') {
-      drawVectorBox(ctx, cx, by, 26, 13, 26, pal.wall, pal.wallShade, null);
-      // Scalloped awning
-      for (let i = 0; i < 7; i++) {
-        ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#f8fafc';
-        ctx.beginPath();
-        ctx.roundRect(cx - 22 + i * 3, by - 19 + i * 1.4, 3.2, 5.5, [0, 0, 1.5, 1.5]);
-        ctx.fill();
-      }
-      drawVectorWindow(ctx, cx + 5, by - 18, 11, 9, true);
-      drawVectorWindow(ctx, cx + 6, by - 33, 7, 6, lit, pal.shutter);
-      drawVectorRoof(ctx, cx, by, 26, 13, 26, 17, pal.roof, pal.roofShade, snowThick);
-      ctx.fillStyle = '#7f1d1d';
-      ctx.beginPath(); ctx.roundRect(cx - 14, by - 55, 6, 14, 1); ctx.fill();
-      ctx.fillStyle = '#f8fafc';
-      ctx.beginPath(); ctx.ellipse(cx - 11, by - 55, 4.5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
     }
     else if (obj.type === 'workshop') {
       drawVectorBox(ctx, cx, by, 26, 13, 24, pal.wall, pal.wallShade, null);

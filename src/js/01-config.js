@@ -52,7 +52,7 @@
 
     { id: 'cottage',    cat: 'buildings', name: 'Cozy Cottage',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Storybook cottage with wreath, shutters & chimney.' },
     { id: 'cottage_svg',cat: 'buildings', name: 'Storybook Cottage',type: 'object', size: 2, hasColor: false, hasLights: true, hasFireplace: true, hasFlip: true, desc: '2x2 illustrated storybook cottage.' },
-    { id: 'bakery',     cat: 'buildings', name: 'Cocoa Bakery',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Warm bakery with scalloped awning & glowing display.' },
+    { id: 'bakery',     cat: 'buildings', name: 'Cocoa Bakery',     type: 'object', size: 1, hasColor: false, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Illustrated bakery with striped awning & cozy glow.' },
     { id: 'workshop',   cat: 'buildings', name: 'Toy Workshop',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Whimsical workshop with hanging sign & eaves.' },
     { id: 'cabin',      cat: 'buildings', name: 'Log Cabin',        type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Rustic timber cabin with stone chimney.' },
     { id: 'chapel',     cat: 'buildings', name: 'Steeple Chapel',   type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: false, hasFlip: true, desc: 'Quaint chapel with stained glass & bell spire.' },

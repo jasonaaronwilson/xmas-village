@@ -1,10 +1,10 @@
-JS_FILES := src/js/01-config.js src/js/01b-svg-assets.js $(sort $(filter-out src/js/01-config.js src/js/01b-svg-assets.js src/js/02b-svg-assets.js,$(wildcard src/js/*.js)))
+JS_FILES := src/js/01-config.js src/js/01b-svg-assets.js $(sort $(filter-out src/js/01-config.js src/js/01b-svg-assets.js,$(wildcard src/js/*.js)))
 PARTS := src/part1-head.html src/styles.css src/part2-body.html $(JS_FILES) src/part3-tail.html
 
 all: index.html docs/index.html
 
-src/js/01b-svg-assets.js: src/cottage.svg
-	@python3 -c "import re, base64; s=open('src/cottage.svg','r',encoding='utf-8').read(); s=re.sub(r'<path[^>]*fill=\"#FEFEFE\"[^>]*/>','',s,count=1); s=re.sub(r'viewBox=\"[^\"]+\"','viewBox=\"680 60 1420 1320\"',s,count=1); s=re.sub(r'width=\"[^\"]+\"','width=\"1420\"',s,count=1); s=re.sub(r'height=\"[^\"]+\"','height=\"1320\"',s,count=1); b=base64.b64encode(s.encode('utf-8')).decode('ascii'); open('$@','w').write('  var SVG_COTTAGE_URI = \"data:image/svg+xml;base64,'+b+'\";\n')"
+src/js/01b-svg-assets.js: src/cottage.svg src/bakery.svg
+	@python3 -c 'import re, base64; items=[("SVG_COTTAGE_URI","src/cottage.svg","680 60 1420 1320",1420,1320),("SVG_BAKERY_URI","src/bakery.svg","640 80 1480 1400",1480,1400)]; strip_bg=lambda m: "" if (("0,0" in m.group(1) or "2752" in m.group(1)) and re.match(r"#F[89A-F][0-9A-F]{4}$$", m.group(2), re.I)) else m.group(0); out=[]; [out.append(f"  var {k} = \"data:image/svg+xml;base64," + base64.b64encode(re.sub(r"height=\"[^\"]+\"", f"height=\"{h}\"", re.sub(r"width=\"[^\"]+\"", f"width=\"{w}\"", re.sub(r"viewBox=\"[^\"]+\"", f"viewBox=\"{vb}\"", re.sub(r"<path d=\"([^\"]+)\" fill=\"([^\"]+)\"/>", strip_bg, open(p, encoding="utf-8").read(), count=2), count=1), count=1), count=1).encode("utf-8")).decode("ascii") + "\";\n") for k,p,vb,w,h in items]; open("$@", "w").write("".join(out))'
 
 index.html: $(PARTS)
 	cat $(PARTS) > $@
@@ -18,6 +18,6 @@ check: index.html
 	@echo "JavaScript syntax OK"
 
 clean:
-	rm -f index.html docs/index.html src/js/01b-svg-assets.js src/js/02b-svg-assets.js
+	rm -f index.html docs/index.html src/js/01b-svg-assets.js
 
 .PHONY: all check clean
