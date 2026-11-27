@@ -56,6 +56,7 @@
     { id: 'workshop',   cat: 'buildings', name: 'Toy Workshop',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Whimsical workshop with hanging sign & eaves.' },
     { id: 'cabin',      cat: 'buildings', name: 'Log Cabin',        type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Rustic timber cabin with stone chimney.' },
     { id: 'chapel',     cat: 'buildings', name: 'Steeple Chapel',   type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: false, hasFlip: true, desc: 'Quaint chapel with stained glass & bell spire.' },
+    { id: 'cathedral',  cat: 'buildings', name: 'Grand Cathedral',  type: 'object', size: 2, hasColor: false, hasLights: true, hasFireplace: false, hasFlip: true, desc: '2x2 gothic winter cathedral.' },
     { id: 'butcher',    cat: 'buildings', name: 'Butcher Shop',     type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Cozy butcher shop with striped awning & display.' },
     { id: 'postoffice', cat: 'buildings', name: 'Post Office',      type: 'object', size: 1, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: true, desc: 'Holiday post office with red mailbox out front.' },
     { id: 'townhall',   cat: 'buildings', name: 'Grand Town Hall',  type: 'object', size: 2, hasColor: true, hasLights: true, hasFireplace: true, hasFlip: false, desc: '2x2 centerpiece hall with illuminated clock tower.' },

@@ -478,7 +478,7 @@
 
     const isBig = obj.size === 2;
     const W = isBig ? 160 : 80;
-    const H = isBig ? 132 : 96;
+    const H = obj.type === 'cathedral' ? 160 : (isBig ? 132 : 96);
     const { c, ctx } = makeVectorCanvas(W, H);
     const cx = W / 2;
     const by = H - 10;
@@ -499,6 +499,10 @@
     if (obj.type === 'bakery') {
       const entry = getSvgAsset('bakery', typeof SVG_BAKERY_URI !== 'undefined' ? SVG_BAKERY_URI : null);
       return drawSvgAsset(ctx, c, key, W, entry, 4, 10, 72, 78, obj.flip);
+    }
+    if (obj.type === 'cathedral') {
+      const entry = getSvgAsset('cathedral', typeof SVG_CATHEDRAL_URI !== 'undefined' ? SVG_CATHEDRAL_URI : null);
+      return drawSvgAsset(ctx, c, key, W, entry, 22, 4, 116, 146, obj.flip);
     }
 
     if (obj.type === 'cottage') {
