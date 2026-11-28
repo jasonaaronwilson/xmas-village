@@ -504,6 +504,10 @@
       const entry = getSvgAsset('cathedral', typeof SVG_CATHEDRAL_URI !== 'undefined' ? SVG_CATHEDRAL_URI : null);
       return drawSvgAsset(ctx, c, key, W, entry, 22, 4, 116, 146, obj.flip);
     }
+    if (obj.type === 'carriage') {
+      const entry = getSvgAsset('carriage', typeof SVG_CARRIAGE_URI !== 'undefined' ? SVG_CARRIAGE_URI : null);
+      return drawSvgAsset(ctx, c, key, W, entry, 2, 26, 76, 62, obj.flip);
+    }
 
     if (obj.type === 'cottage') {
       drawVectorBox(ctx, cx, by, 24, 12, 22, pal.wall, pal.wallShade, null);

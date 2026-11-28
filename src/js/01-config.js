@@ -74,6 +74,7 @@
 
     { id: 'sleigh',     cat: 'living',    name: "Santa's Sleigh",   type: 'object', size: 1, hasLights: true, hasFlip: true, desc: 'Curved crimson sleigh packed with gifts.' },
     { id: 'horse',      cat: 'living',    name: 'Winter Horse',     type: 'object', size: 1, hasHorseColor: true, hasFlip: true, desc: 'Gentle horse with festive saddle blanket.' },
+    { id: 'carriage',   cat: 'living',    name: 'Horse & Carriage', type: 'object', size: 1, hasLights: true, hasFlip: true, desc: 'Festive horse-drawn winter carriage.' },
     { id: 'carolers',   cat: 'living',    name: 'Carolers',         type: 'object', size: 1, desc: 'Trio of bundled-up singers with songbooks.' },
     { id: 'skater',     cat: 'living',    name: 'Ice Skater',       type: 'object', size: 1, hasFlip: true, desc: 'Villager gliding in winter coat & scarf.' },
     { id: 'reindeer',   cat: 'living',    name: 'Reindeer',         type: 'object', size: 1, hasFlip: true, desc: 'Whimsical reindeer with red jingle collar.' },
